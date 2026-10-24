@@ -79,6 +79,19 @@ def run_one(seed, steps, sandbox):
     gui.messagebox.showerror = lambda t, m: notes.append("popup:" + m[:60])
     gui.messagebox.showinfo = lambda t, m: None
     gui.pick_file = lambda title, initialdir: picks["file"]
+    # Native file dialogs are modal and would block the robot; behave as if the user pressed Cancel.
+    gui.filedialog.askopenfilename = lambda *a, **k: ""
+    gui.filedialog.askdirectory = lambda *a, **k: ""
+    # Never touch the real OS credential store or the internet: a random click on "Delete key"
+    # must not remove the developer's stored SteamGridDB key.
+    vault = {"key": ""}
+    gui.cw.load_api_key = lambda: vault["key"]
+    gui.cw.save_api_key = lambda key: vault.__setitem__("key", key.strip())
+
+    class _NoNetwork:
+        def open(self, *a, **k):
+            raise OSError("network disabled in the GUI fuzzer")
+    sc._opener = _NoNetwork()
 
     junk = os.path.join(base, "junk")
     os.makedirs(junk)

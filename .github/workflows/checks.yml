@@ -28,8 +28,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      - name: Qt system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libfontconfig1
       - run: python -m pip install -r requirements-build.txt
       - run: python -m unittest discover -s tests -v
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - run: python qt_gui.py --selftest
+        env:
+          QT_QPA_PLATFORM: offscreen
       - run: python gui.py --selftest
 
   security:
@@ -44,7 +52,7 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install bandit pip-audit
       # Fail on anything of medium severity or higher. Low findings here are normal patterns (fixed-argument subprocess calls, etc.).
-      - run: bandit -r steamcase.py gui.py widgets.py -ll
+      - run: bandit -r steamcase.py gui.py widgets.py qt_gui.py case_service.py cover_workflow.py crash_report.py platform_catalog.py -ll
       # Known vulnerabilities in the pinned build dependencies.
       - run: pip-audit -r requirements-build.txt --no-deps --disable-pip
 

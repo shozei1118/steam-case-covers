@@ -1861,6 +1861,7 @@ class App(tk.Tk):
                             raise sc.SteamcaseError("The Steam shortcut for %s no longer exists. Choose it again. "
                                                     "No Steam artwork was changed." % item["name"])
                 say("Preparing %d queued covers…" % len(items))
+                cw.cache_dir().mkdir(parents=True, exist_ok=True)  # absent on a fresh install
                 stage = tempfile.mkdtemp(prefix="casecovers-apply-", dir=cw.cache_dir())
                 for item in items:
                     self.events.put(("queue_status", {item["key"]: "Preparing"}))

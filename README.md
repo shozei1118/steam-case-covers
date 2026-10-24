@@ -59,7 +59,7 @@ Every release has a `SHA256SUMS` file and signed build provenance, so you can ch
 
 ### From source
 
-1. Install [Python 3.10 or newer](https://www.python.org/downloads/) (3.12 is used for releases).
+1. Install [Python 3.11 or newer](https://www.python.org/downloads/) (3.12 is used for releases).
 2. Download or clone this repository.
 3. Install the dependencies and start the app:
 

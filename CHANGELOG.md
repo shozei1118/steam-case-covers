@@ -3,6 +3,9 @@
 All notable changes. Versions follow [Semantic Versioning](https://semver.org); `0.x` versions are pre-releases.
 
 ## [Unreleased]
+- Fixed: Apply in the Tkinter fallback failed on a fresh install because the artwork cache folder did not exist yet.
+- Security: Pillow 13.0.0 and certifi 2026.10.19 (known vulnerabilities in the previous pins). Running from source now needs Python 3.11 or newer.
+- CI: Qt tests and selftest also run on Linux, the security scan covers the new modules, logo SVGs keep identical bytes on Windows checkouts, and the GUI fuzzer no longer touches the real credential store, network or file dialogs.
 - Reuse artwork-grid tiles between games so repeatedly loading large SteamGridDB result sets cannot trigger a native PySide6 access violation while adding covers to Batch. Added persistent Qt/Python and native crash logs plus a 60-cover stress check.
 - Strengthened the PlayStation 5 and Wii case rims and lower lips so their platform colors remain visible around dark artwork; frame geometry and header logos are unchanged.
 - Arranged the three Steam steps beside a full-height manual search/export panel, with a stacked layout on narrow windows. Artwork choices now appear as a scrollable thumbnail grid with background loading and cache reuse; the selected image still shows its final platform frame.
