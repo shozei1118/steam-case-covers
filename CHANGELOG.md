@@ -3,6 +3,8 @@
 All notable changes. Versions follow [Semantic Versioning](https://semver.org); `0.x` versions are pre-releases.
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-10-24
 - Fixed: Apply in the Tkinter fallback failed on a fresh install because the artwork cache folder did not exist yet.
 - Security: Pillow 13.0.0 and certifi 2026.10.19 (known vulnerabilities in the previous pins). Running from source now needs Python 3.11 or newer.
 - CI: Qt tests and selftest also run on Linux, the security scan covers the new modules, logo SVGs keep identical bytes on Windows checkouts, and the GUI fuzzer no longer touches the real credential store, network or file dialogs.
