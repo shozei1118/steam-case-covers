@@ -1,0 +1,1069 @@
+{
+  "schema_version": 1,
+  "source_revision": "1de47931607ddf83cbc982d776b68e6cc3864ad7",
+  "size": [
+    600,
+    900
+  ],
+  "art_window": [
+    14,
+    96,
+    586,
+    872
+  ],
+  "platforms": [
+    {
+      "id": "ps1",
+      "name": "PlayStation",
+      "family": "PlayStation",
+      "frame_color": "#606575",
+      "palette": {
+        "case_top": "#7a8092",
+        "case_mid": "#606575",
+        "case_bottom": "#424652",
+        "bar_top": "#3e424c",
+        "bar_bottom": "#23262c",
+        "dots": "#8b909b",
+        "edge": "#b7bcc7",
+        "separator": "#798190",
+        "separator_high": "#aeb5c0",
+        "lip_base": "#606575",
+        "lip_high": "#aeb5c0",
+        "lip_shadow": "#424652"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "colored",
+      "logos": {
+        "light": "assets/logos/ps1/light.svg",
+        "dark": "assets/logos/ps1/dark.svg",
+        "colored": "assets/logos/ps1/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "ps2",
+      "name": "PlayStation 2",
+      "family": "PlayStation",
+      "frame_color": "#273e9e",
+      "palette": {
+        "case_top": "#3152c6",
+        "case_mid": "#273e9e",
+        "case_bottom": "#182871",
+        "bar_top": "#182d67",
+        "bar_bottom": "#0c183c",
+        "dots": "#5370be",
+        "edge": "#7692ec",
+        "separator": "#325dc3",
+        "separator_high": "#6991ea",
+        "lip_base": "#273e9e",
+        "lip_high": "#6991ea",
+        "lip_shadow": "#182871"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/ps2/light.svg",
+        "dark": "assets/logos/ps2/dark.svg",
+        "colored": "assets/logos/ps2/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "ps3",
+      "name": "PlayStation 3",
+      "family": "PlayStation",
+      "frame_color": "#3c414d",
+      "palette": {
+        "case_top": "#4b5261",
+        "case_mid": "#3c414d",
+        "case_bottom": "#292d36",
+        "bar_top": "#272b32",
+        "bar_bottom": "#16181d",
+        "dots": "#565d67",
+        "edge": "#68758e",
+        "separator": "#4b5360",
+        "separator_high": "#647388",
+        "lip_base": "#3c414d",
+        "lip_high": "#647388",
+        "lip_shadow": "#292d36"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/ps3/light.svg",
+        "dark": "assets/logos/ps3/dark.svg",
+        "colored": "assets/logos/ps3/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "ps4",
+      "name": "PlayStation 4",
+      "family": "PlayStation",
+      "frame_color": "#2058b7",
+      "palette": {
+        "case_top": "#3376db",
+        "case_mid": "#2058b7",
+        "case_bottom": "#123b83",
+        "bar_top": "#144077",
+        "bar_bottom": "#092346",
+        "dots": "#5d8fcc",
+        "edge": "#8ab8f7",
+        "separator": "#3282d9",
+        "separator_high": "#7cb7f6",
+        "lip_base": "#2058b7",
+        "lip_high": "#7cb7f6",
+        "lip_shadow": "#123b83"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/ps4/light.svg",
+        "dark": "assets/logos/ps4/dark.svg",
+        "colored": "assets/logos/ps4/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "ps5",
+      "name": "PlayStation 5",
+      "family": "PlayStation",
+      "frame_color": "#397cbe",
+      "palette": {
+        "case_top": "#72a6d7",
+        "case_mid": "#397cbe",
+        "case_bottom": "#205893",
+        "bar_top": "#558dc5",
+        "bar_bottom": "#264f7b",
+        "dots": "#eaf0f5",
+        "edge": "#bbd9f2",
+        "separator": "#e9f0f7",
+        "separator_high": "#e7f0f9",
+        "lip_base": "#397cbe",
+        "lip_high": "#9ac8ea",
+        "lip_shadow": "#205893"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/ps5/light.svg",
+        "dark": "assets/logos/ps5/dark.svg",
+        "colored": "assets/logos/ps5/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "psp",
+      "name": "PSP",
+      "family": "PlayStation",
+      "frame_color": "#30374c",
+      "palette": {
+        "case_top": "#3c465f",
+        "case_mid": "#30374c",
+        "case_bottom": "#202636",
+        "bar_top": "#1f2531",
+        "bar_bottom": "#11151d",
+        "dots": "#475164",
+        "edge": "#50628e",
+        "separator": "#3c485e",
+        "separator_high": "#4d6389",
+        "lip_base": "#30374c",
+        "lip_high": "#4d6389",
+        "lip_shadow": "#202636"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/psp/light.svg",
+        "dark": "assets/logos/psp/dark.svg",
+        "colored": "assets/logos/psp/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "ps_vita",
+      "name": "PS Vita",
+      "family": "PlayStation",
+      "frame_color": "#355ea1",
+      "palette": {
+        "case_top": "#4a7bc3",
+        "case_mid": "#355ea1",
+        "case_bottom": "#224073",
+        "bar_top": "#214168",
+        "bar_bottom": "#12243d",
+        "dots": "#6c91bc",
+        "edge": "#98bae8",
+        "separator": "#4983c1",
+        "separator_high": "#8cb8e5",
+        "lip_base": "#355ea1",
+        "lip_high": "#8cb8e5",
+        "lip_shadow": "#224073"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/ps_vita/light.svg",
+        "dark": "assets/logos/ps_vita/dark.svg",
+        "colored": "assets/logos/ps_vita/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "xbox",
+      "name": "Original Xbox",
+      "family": "Xbox",
+      "frame_color": "#24783c",
+      "palette": {
+        "case_top": "#2d9748",
+        "case_mid": "#24783c",
+        "case_bottom": "#165629",
+        "bar_top": "#174e22",
+        "bar_bottom": "#0c2e14",
+        "dots": "#419752",
+        "edge": "#3ed964",
+        "separator": "#2e9440",
+        "separator_high": "#35d751",
+        "lip_base": "#24783c",
+        "lip_high": "#35d751",
+        "lip_shadow": "#165629"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/xbox/light.svg",
+        "dark": "assets/logos/xbox/dark.svg",
+        "colored": "assets/logos/xbox/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "xbox_360",
+      "name": "Xbox 360",
+      "family": "Xbox",
+      "frame_color": "#5a9f30",
+      "palette": {
+        "case_top": "#76c53f",
+        "case_mid": "#5a9f30",
+        "case_bottom": "#3d721e",
+        "bar_top": "#3f671e",
+        "bar_bottom": "#233d10",
+        "dots": "#8cbc63",
+        "edge": "#b3e88b",
+        "separator": "#7ec33e",
+        "separator_high": "#b1e67f",
+        "lip_base": "#5a9f30",
+        "lip_high": "#b1e67f",
+        "lip_shadow": "#3d721e"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/xbox_360/light.svg",
+        "dark": "assets/logos/xbox_360/dark.svg",
+        "colored": "assets/logos/xbox_360/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "xbox_one",
+      "name": "Xbox One",
+      "family": "Xbox",
+      "frame_color": "#237e3e",
+      "palette": {
+        "case_top": "#2c9e4b",
+        "case_mid": "#237e3e",
+        "case_bottom": "#165a2b",
+        "bar_top": "#165223",
+        "bar_bottom": "#0b3014",
+        "dots": "#419e55",
+        "edge": "#42de69",
+        "separator": "#2d9c42",
+        "separator_high": "#38dd56",
+        "lip_base": "#237e3e",
+        "lip_high": "#38dd56",
+        "lip_shadow": "#165a2b"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/xbox_one/light.svg",
+        "dark": "assets/logos/xbox_one/dark.svg",
+        "colored": "assets/logos/xbox_one/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "xbox_series",
+      "name": "Xbox Series X|S",
+      "family": "Xbox",
+      "frame_color": "#176b37",
+      "palette": {
+        "case_top": "#1d8642",
+        "case_mid": "#176b37",
+        "case_bottom": "#0d4d26",
+        "bar_top": "#0e451f",
+        "bar_bottom": "#072912",
+        "dots": "#2f8549",
+        "edge": "#17d255",
+        "separator": "#1e843a",
+        "separator_high": "#16ca46",
+        "lip_base": "#176b37",
+        "lip_high": "#16ca46",
+        "lip_shadow": "#0d4d26"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/xbox_series/light.svg",
+        "dark": "assets/logos/xbox_series/dark.svg",
+        "colored": "assets/logos/xbox_series/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "nes",
+      "name": "NES",
+      "family": "Nintendo",
+      "frame_color": "#b6443d",
+      "palette": {
+        "case_top": "#cc6966",
+        "case_mid": "#b6443d",
+        "case_bottom": "#822d27",
+        "bar_top": "#762628",
+        "bar_bottom": "#451514",
+        "dots": "#c88889",
+        "edge": "#f1c3c3",
+        "separator": "#ca6469",
+        "separator_high": "#eeb5b8",
+        "lip_base": "#b6443d",
+        "lip_high": "#eeb5b8",
+        "lip_shadow": "#822d27"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/nes/light.svg",
+        "dark": "assets/logos/nes/dark.svg",
+        "colored": "assets/logos/nes/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "snes",
+      "name": "SNES",
+      "family": "Nintendo",
+      "frame_color": "#72539c",
+      "palette": {
+        "case_top": "#9076b6",
+        "case_mid": "#72539c",
+        "case_bottom": "#4f376e",
+        "bar_top": "#463565",
+        "bar_bottom": "#281d3b",
+        "dots": "#9f91ba",
+        "edge": "#d2c7e6",
+        "separator": "#8975b4",
+        "separator_high": "#c6bbe0",
+        "lip_base": "#72539c",
+        "lip_high": "#c6bbe0",
+        "lip_shadow": "#4f376e"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/snes/light.svg",
+        "dark": "assets/logos/snes/dark.svg",
+        "colored": "assets/logos/snes/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "n64",
+      "name": "Nintendo 64",
+      "family": "Nintendo",
+      "frame_color": "#2388a3",
+      "palette": {
+        "case_top": "#3c9db2",
+        "case_mid": "#2388a3",
+        "case_bottom": "#165d74",
+        "bar_top": "#aec5c8",
+        "bar_bottom": "#80adb4",
+        "dots": "#759ba4",
+        "edge": "#82bcc9",
+        "separator": "#389db0",
+        "separator_high": "#83c2ce",
+        "lip_base": "#2388a3",
+        "lip_high": "#83c2ce",
+        "lip_shadow": "#165d74"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "colored",
+      "logos": {
+        "light": "assets/logos/n64/light.svg",
+        "dark": "assets/logos/n64/dark.svg",
+        "colored": "assets/logos/n64/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "gamecube",
+      "name": "GameCube",
+      "family": "Nintendo",
+      "frame_color": "#6743a2",
+      "palette": {
+        "case_top": "#8262be",
+        "case_mid": "#6743a2",
+        "case_bottom": "#482c73",
+        "bar_top": "#3e2b69",
+        "bar_bottom": "#24173e",
+        "dots": "#9281bc",
+        "edge": "#c5b4e7",
+        "separator": "#7a61bc",
+        "separator_high": "#b7a7e3",
+        "lip_base": "#6743a2",
+        "lip_high": "#b7a7e3",
+        "lip_shadow": "#482c73"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/gamecube/light.svg",
+        "dark": "assets/logos/gamecube/dark.svg",
+        "colored": "assets/logos/gamecube/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "wii",
+      "name": "Wii",
+      "family": "Nintendo",
+      "frame_color": "#328fa6",
+      "palette": {
+        "case_top": "#75bdca",
+        "case_mid": "#328fa6",
+        "case_bottom": "#1b657c",
+        "bar_top": "#3c8e9c",
+        "bar_bottom": "#20515c",
+        "dots": "#e1eef0",
+        "edge": "#a5dce4",
+        "separator": "#bde0e5",
+        "separator_high": "#e7f6f8",
+        "lip_base": "#328fa6",
+        "lip_high": "#9bd6dd",
+        "lip_shadow": "#1b657c"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/wii/light.svg",
+        "dark": "assets/logos/wii/dark.svg",
+        "colored": "assets/logos/wii/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "wii_u",
+      "name": "Wii U",
+      "family": "Nintendo",
+      "frame_color": "#398eaf",
+      "palette": {
+        "case_top": "#5aadc9",
+        "case_mid": "#398eaf",
+        "case_bottom": "#24637d",
+        "bar_top": "#246172",
+        "bar_bottom": "#133843",
+        "dots": "#7db6c4",
+        "edge": "#b2e0ee",
+        "separator": "#59b4c7",
+        "separator_high": "#a4dfeb",
+        "lip_base": "#398eaf",
+        "lip_high": "#a4dfeb",
+        "lip_shadow": "#24637d"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/wii_u/light.svg",
+        "dark": "assets/logos/wii_u/dark.svg",
+        "colored": "assets/logos/wii_u/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "switch",
+      "name": "Nintendo Switch",
+      "family": "Nintendo",
+      "frame_color": "#dc2838",
+      "palette": {
+        "case_top": "#e56171",
+        "case_mid": "#dc2838",
+        "case_bottom": "#a1141f",
+        "bar_top": "#91162a",
+        "bar_bottom": "#560a15",
+        "dots": "#dc8c99",
+        "edge": "#fdd5db",
+        "separator": "#e46079",
+        "separator_high": "#fcc4cf",
+        "lip_base": "#dc2838",
+        "lip_high": "#fcc4cf",
+        "lip_shadow": "#a1141f"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/switch/light.svg",
+        "dark": "assets/logos/switch/dark.svg",
+        "colored": "assets/logos/switch/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "switch_2",
+      "name": "Nintendo Switch 2",
+      "family": "Nintendo",
+      "frame_color": "#d7192d",
+      "palette": {
+        "case_top": "#e9445a",
+        "case_mid": "#d7192d",
+        "case_bottom": "#9b0c19",
+        "bar_top": "#8c0f25",
+        "bar_bottom": "#530612",
+        "dots": "#da7285",
+        "edge": "#fdb1bc",
+        "separator": "#e74365",
+        "separator_high": "#fda0b4",
+        "lip_base": "#d7192d",
+        "lip_high": "#fda0b4",
+        "lip_shadow": "#9b0c19"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/switch_2/light.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "game_boy",
+      "name": "Game Boy",
+      "family": "Nintendo",
+      "frame_color": "#869572",
+      "palette": {
+        "case_top": "#a8b299",
+        "case_mid": "#869572",
+        "case_bottom": "#5d694d",
+        "bar_top": "#586148",
+        "bar_bottom": "#323829",
+        "dots": "#b8beae",
+        "edge": "#edefe8",
+        "separator": "#a8b097",
+        "separator_high": "#e4e7dd",
+        "lip_base": "#869572",
+        "lip_high": "#e4e7dd",
+        "lip_shadow": "#5d694d"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/game_boy/light.svg",
+        "dark": "assets/logos/game_boy/dark.svg",
+        "colored": "assets/logos/game_boy/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "game_boy_color",
+      "name": "Game Boy Color",
+      "family": "Nintendo",
+      "frame_color": "#7654a3",
+      "palette": {
+        "case_top": "#9678b8",
+        "case_mid": "#7654a3",
+        "case_bottom": "#4d3571",
+        "bar_top": "#b7a7cc",
+        "bar_bottom": "#9c86b7",
+        "dots": "#8c79a4",
+        "edge": "#cbb9e0",
+        "separator": "#8d72b0",
+        "separator_high": "#c2add9",
+        "lip_base": "#7654a3",
+        "lip_high": "#c2add9",
+        "lip_shadow": "#4d3571"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "colored",
+      "logos": {
+        "light": "assets/logos/game_boy_color/light.svg",
+        "dark": "assets/logos/game_boy_color/dark.svg",
+        "colored": "assets/logos/game_boy_color/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "game_boy_advance",
+      "name": "Game Boy Advance",
+      "family": "Nintendo",
+      "frame_color": "#694da5",
+      "palette": {
+        "case_top": "#8873bd",
+        "case_mid": "#694da5",
+        "case_bottom": "#493375",
+        "bar_top": "#3f316b",
+        "bar_bottom": "#241b3e",
+        "dots": "#9b90bf",
+        "edge": "#d1c8ea",
+        "separator": "#8171bc",
+        "separator_high": "#c4bbe5",
+        "lip_base": "#694da5",
+        "lip_high": "#c4bbe5",
+        "lip_shadow": "#493375"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/game_boy_advance/light.svg",
+        "dark": "assets/logos/game_boy_advance/dark.svg",
+        "colored": "assets/logos/game_boy_advance/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "nintendo_ds",
+      "name": "Nintendo DS",
+      "family": "Nintendo",
+      "frame_color": "#77849d",
+      "palette": {
+        "case_top": "#a0aabb",
+        "case_mid": "#77849d",
+        "case_bottom": "#4f5a71",
+        "bar_top": "#4a5668",
+        "bar_bottom": "#2a313c",
+        "dots": "#b7bec7",
+        "edge": "#edeff3",
+        "separator": "#9eaab9",
+        "separator_high": "#eaedf1",
+        "lip_base": "#77849d",
+        "lip_high": "#eaedf1",
+        "lip_shadow": "#4f5a71"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/nintendo_ds/light.svg",
+        "dark": "assets/logos/nintendo_ds/dark.svg",
+        "colored": "assets/logos/nintendo_ds/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "nintendo_3ds",
+      "name": "Nintendo 3DS",
+      "family": "Nintendo",
+      "frame_color": "#b84243",
+      "palette": {
+        "case_top": "#cb6f72",
+        "case_mid": "#b84243",
+        "case_bottom": "#832a2a",
+        "bar_top": "#772a30",
+        "bar_bottom": "#461619",
+        "dots": "#ca9095",
+        "edge": "#f2ced0",
+        "separator": "#ca6d78",
+        "separator_high": "#efc0c5",
+        "lip_base": "#b84243",
+        "lip_high": "#efc0c5",
+        "lip_shadow": "#832a2a"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/nintendo_3ds/light.svg",
+        "dark": "assets/logos/nintendo_3ds/dark.svg",
+        "colored": "assets/logos/nintendo_3ds/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "master_system",
+      "name": "Master System",
+      "family": "Sega",
+      "frame_color": "#bd3343",
+      "palette": {
+        "case_top": "#d35b6c",
+        "case_mid": "#bd3343",
+        "case_bottom": "#871f2a",
+        "bar_top": "#7b2031",
+        "bar_bottom": "#48101a",
+        "dots": "#cc808f",
+        "edge": "#f4bbc4",
+        "separator": "#d15a74",
+        "separator_high": "#f1acbc",
+        "lip_base": "#bd3343",
+        "lip_high": "#f1acbc",
+        "lip_shadow": "#871f2a"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/master_system/light.svg",
+        "dark": "assets/logos/master_system/dark.svg",
+        "colored": "assets/logos/master_system/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "mega_drive",
+      "name": "Mega Drive / Genesis",
+      "family": "Sega",
+      "frame_color": "#343944",
+      "palette": {
+        "case_top": "#414855",
+        "case_mid": "#343944",
+        "case_bottom": "#242730",
+        "bar_top": "#21252c",
+        "bar_bottom": "#131519",
+        "dots": "#4b515b",
+        "edge": "#5a677d",
+        "separator": "#414954",
+        "separator_high": "#566578",
+        "lip_base": "#343944",
+        "lip_high": "#566578",
+        "lip_shadow": "#242730"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/mega_drive/light.svg",
+        "dark": "assets/logos/mega_drive/dark.svg",
+        "colored": "assets/logos/mega_drive/colored.svg"
+      },
+      "review": [
+        "Mega Drive and Genesis are regional wordmarks. Mega Drive is the default; Genesis is available as an explicit regional option."
+      ],
+      "regional_logos": {
+        "light": "assets/logos/mega_drive/genesis_light.svg",
+        "dark": "assets/logos/mega_drive/genesis_dark.svg",
+        "colored": "assets/logos/mega_drive/genesis_colored.svg"
+      }
+    },
+    {
+      "id": "saturn",
+      "name": "Saturn",
+      "family": "Sega",
+      "frame_color": "#37508f",
+      "palette": {
+        "case_top": "#4568b4",
+        "case_mid": "#37508f",
+        "case_bottom": "#243666",
+        "bar_top": "#23375d",
+        "bar_bottom": "#131f36",
+        "dots": "#627eb0",
+        "edge": "#87a3dc",
+        "separator": "#456fb1",
+        "separator_high": "#7ba1d9",
+        "lip_base": "#37508f",
+        "lip_high": "#7ba1d9",
+        "lip_shadow": "#243666"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/saturn/light.svg",
+        "dark": "assets/logos/saturn/dark.svg"
+      },
+      "review": [
+        "colored SVG does not match the recommended PNG closely enough (0.7916); variant omitted."
+      ]
+    },
+    {
+      "id": "dreamcast",
+      "name": "Dreamcast",
+      "family": "Sega",
+      "frame_color": "#cb5b28",
+      "palette": {
+        "case_top": "#dd7b54",
+        "case_mid": "#cb5b28",
+        "case_bottom": "#923f17",
+        "bar_top": "#542014",
+        "bar_bottom": "#28100b",
+        "dots": "#9c5940",
+        "edge": "#f9cbbb",
+        "separator": "#db6f53",
+        "separator_high": "#f7baab",
+        "lip_base": "#cb5b28",
+        "lip_high": "#f7baab",
+        "lip_shadow": "#923f17"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "colored",
+      "logos": {
+        "light": "assets/logos/dreamcast/light.svg",
+        "dark": "assets/logos/dreamcast/dark.svg",
+        "colored": "assets/logos/dreamcast/colored.svg"
+      },
+      "review": []
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "family": "PC",
+      "frame_color": "#1636c8",
+      "palette": {
+        "case_top": "#2f5fe8",
+        "case_mid": "#1636c8",
+        "case_bottom": "#0a1e90",
+        "bar_top": "#0d3a82",
+        "bar_bottom": "#051c4d",
+        "dots": "#5d8fd6",
+        "edge": "#8fb2ff",
+        "separator": "#2e86e6",
+        "separator_high": "#7fc0ff",
+        "lip_base": "#0b2bb5",
+        "lip_high": "#4d7cf2",
+        "lip_shadow": "#061a78"
+      },
+      "template": {
+        "id": "steam_case_v1",
+        "logo_box": [
+          38,
+          20,
+          562,
+          84
+        ]
+      },
+      "logo_default": "light",
+      "logos": {
+        "light": "assets/logos/steam/light.svg",
+        "dark": "assets/logos/steam/dark.svg",
+        "colored": "assets/logos/steam/colored.svg"
+      },
+      "review": [
+        "Default Steam frame keeps its original Steam artwork; optional catalog SVG variants use separate source assets."
+      ],
+      "legacy_frame": "assets/frame.png"
+    }
+  ]
+}

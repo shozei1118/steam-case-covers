@@ -2,13 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Diego Bergonsi. Part of steam-case-covers: https://github.com/diegobergonsi/steam-case-covers
 """steamcase GUI: three steps, no terminal.  Run:  python gui.py"""
-import os, queue, re, shutil, subprocess, sys, threading, time, webbrowser
+import base64, io, os, queue, re, shutil, subprocess, sys, tempfile, threading, time, webbrowser
 import tkinter as tk
 from tkinter import filedialog
 import tkinter.font as tkfont
 
 import steamcase as sc
-from widgets import (AMBER, BG, CARD, FG, MUTED, FAINT, ACCENT, RED, Card, StepBadge, RoundedButton, Switch, Bar, InfoBadge, ScrollFrame, Messages, px, set_scale)
+import cover_workflow as cw
+from platform_catalog import load_catalog
+from widgets import (AMBER, BG, CARD, LINE, FG, MUTED, FAINT, ACCENT, RED, Card, StepBadge, RoundedButton, Switch, Bar, InfoBadge, ScrollFrame, Messages, px, set_scale)
 
 
 def downloads_dir():
@@ -55,14 +57,131 @@ def _short(name, n=28):
     return name if len(name) <= n else name[:n - 1] + "…"
 
 
+def matching_shortcuts(options, query):
+    """Preserve Steam's shortcut records and order while filtering by title or ID."""
+    needle = query.strip().casefold()
+    return [item for item in options if not needle or needle in item["name"].casefold()
+            or needle in str(item["id"])]
+
+
+class ShortcutPicker(tk.Toplevel):
+    """Compact, keyboard-friendly selector for existing Steam shortcut records."""
+
+    def __init__(self, parent, options):
+        super().__init__(parent)
+        self.options = tuple(options)
+        self.filtered = []
+        self.selected = None
+        self.result = None
+        self.title("Choose Steam shortcut · Case Covers")
+        self.configure(bg=BG)
+        self.transient(parent)
+        self.resizable(True, True)
+        if getattr(parent, "_icon", None):
+            self.iconphoto(False, parent._icon)
+        outer = tk.Frame(self, bg=LINE, padx=1, pady=1)
+        outer.pack(fill="both", expand=True, padx=px(12), pady=px(12))
+        body = tk.Frame(outer, bg=CARD, padx=px(22), pady=px(18))
+        body.pack(fill="both", expand=True)
+        tk.Label(body, text="Choose a Steam shortcut", bg=CARD, fg=FG,
+                 font=("TkDefaultFont", 16, "bold")).pack(anchor="w")
+        tk.Label(body, text="Search by game name or shortcut ID.", bg=CARD, fg=MUTED).pack(
+            anchor="w", pady=(px(6), px(14)))
+        self.query = tk.StringVar()
+        self.search = tk.Entry(body, textvariable=self.query, bg=BG, fg=FG,
+                               insertbackground=FG, relief="flat", highlightthickness=1,
+                               highlightbackground=LINE, highlightcolor=ACCENT)
+        self.search.pack(fill="x", ipady=px(7))
+        self.count = tk.Label(body, text="", bg=CARD, fg=MUTED, anchor="w")
+        self.count.pack(fill="x", pady=(px(8), px(5)))
+        list_area = tk.Frame(body, bg=CARD)
+        list_area.pack(fill="both", expand=True)
+        self.listbox = tk.Listbox(list_area, height=1, bg=BG, fg=FG, selectbackground=ACCENT,
+                                  selectforeground="#0b141d", exportselection=False,
+                                  activestyle="none", borderwidth=0, highlightthickness=1,
+                                  highlightbackground=LINE)
+        vertical = tk.Scrollbar(list_area, orient="vertical", command=self.listbox.yview,
+                                width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        horizontal = tk.Scrollbar(list_area, orient="horizontal", command=self.listbox.xview,
+                                  width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        self.listbox.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+        vertical.pack(side="right", fill="y")
+        horizontal.pack(side="bottom", fill="x")
+        self.listbox.pack(side="left", fill="both", expand=True)
+        self.name = tk.Label(body, text="Select a game to continue.", bg=CARD, fg=FG,
+                             justify="left", anchor="w", wraplength=px(500))
+        self.name.pack(fill="x", pady=(px(10), 0))
+        self.identifier = tk.Label(body, text="", bg=CARD, fg=MUTED, anchor="w")
+        self.identifier.pack(fill="x", pady=(px(3), px(10)))
+        body.bind("<Configure>", lambda event: self.name.configure(
+            wraplength=max(px(180), event.width - px(44))), add="+")
+        footer = tk.Frame(body, bg=CARD)
+        footer.pack(fill="x")
+        self.select_button = RoundedButton(footer, "Select", self._accept, primary=True, state="disabled")
+        self.select_button.pack(side="right")
+        RoundedButton(footer, "Cancel", self._cancel).pack(side="right", padx=(0, px(8)))
+        self.query.trace_add("write", lambda *_: self._refresh())
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+        self.listbox.bind("<Double-Button-1>", lambda _event: self._accept())
+        self.listbox.bind("<Return>", lambda _event: self._accept())
+        self.bind("<Escape>", lambda _event: self._cancel())
+        self.protocol("WM_DELETE_WINDOW", self._cancel)
+        self._refresh()
+        screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
+        width = min(px(600), screen_w - px(40))
+        height = min(px(550), screen_h - px(80))
+        self.geometry("%dx%d+%d+%d" % (width, height,
+                      max(0, parent.winfo_rootx() + (parent.winfo_width() - width) // 2),
+                      max(0, parent.winfo_rooty() + (parent.winfo_height() - height) // 2)))
+        self.minsize(min(px(420), width), min(px(430), height))
+
+    def _refresh(self):
+        self.filtered = matching_shortcuts(self.options, self.query.get())
+        self.listbox.delete(0, "end")
+        if self.filtered:
+            self.listbox.insert("end", *(item["name"] for item in self.filtered))
+        self.count.configure(text="%d of %d shortcuts" % (len(self.filtered), len(self.options)))
+        self.selected = None
+        self.select_button.configure(state="disabled")
+        self.name.configure(text="Select a game to continue." if self.filtered else "No matching shortcuts.")
+        self.identifier.configure(text="")
+
+    def _on_select(self, _event=None):
+        indexes = self.listbox.curselection()
+        if not indexes or indexes[0] >= len(self.filtered):
+            return
+        self.selected = self.filtered[indexes[0]]
+        self.name.configure(text=self.selected["name"])
+        self.identifier.configure(text="Steam shortcut ID: %s" % self.selected["id"])
+        self.select_button.configure(state="normal")
+
+    def _accept(self):
+        if self.selected is not None:
+            self.result = self.selected["id"]
+            self.destroy()
+
+    def _cancel(self):
+        self.result = None
+        self.destroy()
+
+    def show(self):
+        self.wait_visibility()
+        self.grab_set()
+        self.search.focus_set()
+        self.wait_window()
+        return self.result
+
+
 class App(tk.Tk):
     def __init__(self, downloads=None, covers_dir=None, screen_h=None):
         super().__init__()
         self.covers_dir = covers_dir or sc.default_covers_dir()
-        self.cover_files = []             # covers built by the last run; step 3 applies exactly these
+        self.cover_files = []             # covers built by the last automatic run
         self.running = False
         self.busy = False                 # step 3 (apply/restore) in progress
         self.applied = False              # covers were added to Steam in this session
+        self.last_apply_backup = None
+        self.last_apply_keys = ()
         self.events = queue.Queue()
         self.cancel_flag = threading.Event()
         self.downloads = downloads or downloads_dir()
@@ -70,7 +189,7 @@ class App(tk.Tk):
         self._reported = {}               # path -> signature of the files we already complained about
         self._last_error = ""
         self._seen = {}                   # path -> (size, mtime) from the last poll, to wait for a finished download
-        self.title("Steam Case Covers")
+        self.title("Case Covers")
         messagebox.parent = self
         try:                                           # window / taskbar icon
             self._icon = tk.PhotoImage(master=self, file=os.path.join(sc.HERE, "assets", "icon.png"))
@@ -84,6 +203,9 @@ class App(tk.Tk):
         self.steam_on = False             # kept fresh by a background thread: asking the OS for processes can take long on Windows
         self._quit = threading.Event()
         threading.Thread(target=self._watch_steam, daemon=True).start()
+        self._thumb_tasks = queue.Queue()
+        for _ in range(4):
+            threading.Thread(target=self._thumbnail_loop, daemon=True).start()
         self._collapse = False            # folding locked steps starts after the window has been sized for all of them
         self.account = None               # Steam account folder chosen by the user (None: the one Steam used last)
         self.library_path = None          # chosen userdata.json
@@ -94,34 +216,76 @@ class App(tk.Tk):
         self.scroller = ScrollFrame(self)
         self.scroller.pack(fill="both", expand=True)
         self.holder = self.scroller.inner
+        self._thumb_cache = {}
         head = tk.Frame(self.holder, bg=BG)
+        self.header = head
         head.pack(fill="x", padx=px(28), pady=(px(24), px(14)))
+        brand = tk.Frame(head, bg=BG)
+        brand.pack(side="left")
         if getattr(self, "_icon", None):
             self._icon_small = self._icon.subsample(4 if px(1) == 1 else 3)
-            tk.Label(head, image=self._icon_small, bg=BG).pack(side="left", padx=(0, px(16)))
-        titles = tk.Frame(head, bg=BG)
+            tk.Label(brand, image=self._icon_small, bg=BG).pack(side="left", padx=(0, px(16)))
+        titles = tk.Frame(brand, bg=BG)
         titles.pack(side="left")
-        tk.Label(titles, text="Steam Case Covers", bg=BG, fg=FG, font=("TkDefaultFont", 22, "bold")).pack(anchor="w")
+        tk.Label(titles, text="Case Covers", bg=BG, fg=FG, font=("TkDefaultFont", 22, "bold")).pack(anchor="w")
         tk.Label(titles, text="Put every game in your library in a physical case.", bg=BG, fg=MUTED).pack(anchor="w")
-        self.btn_update = RoundedButton(head, "Check for updates", self.check_update, bg=BG, quiet=True)
-        self.btn_update.pack(side="right")
+        actions = tk.Frame(head, bg=BG)
+        actions.pack(side="right")
+        self.btn_settings = RoundedButton(actions, "⚙", self.open_settings, bg=BG, quiet=True)
+        self.btn_settings.pack(side="right")
+        self._header_stacked = False
+        head.bind("<Configure>", lambda event: self._layout_header(event.width, brand, actions), add="+")
+        self.settings_window = None
 
-        self.step1 = self._card("1", "Get your game list")
-        self.step2 = self._card("2", "Make the covers")
-        self.step3 = self._card("3", "Add them to Steam")
+        self.columns = tk.Frame(self.holder, bg=BG)
+        self.columns.pack(fill="x")
+        self.left_column = tk.Frame(self.columns, bg=BG)
+        self.right_column = tk.Frame(self.columns, bg=BG)
+        self._column_mode = None
+        self.columns.bind("<Configure>", lambda event: self._layout_columns(event.width), add="+")
+        self.step1 = self._card("1", "Get your game list", self.left_column)
+        self.step2 = self._card("2", "Make the covers", self.left_column)
+        self.step3 = self._card("3", "Add them to Steam", self.left_column)
         self._build_step1(self.step1)
         self._build_step2(self.step2)
         self._build_step3(self.step3)
+        self.manual_body = self._card("4", "Choose and edit covers", self.right_column)
+        self.manual_card = self.manual_body.master.master
+        self.manual_toggle = RoundedButton(self.manual_body.head, "Collapse", self.toggle_manual, quiet=True)
+        self.manual_toggle.pack(side="right")
+        self.manual_body.pack_configure(fill="both", expand=True)
+        self.manual_scroller = ScrollFrame(self.manual_body, bg=CARD)
+        self.manual_scroller.pack(fill="both", expand=True)
+        self.manual_content = self.manual_scroller.inner
+        self._build_manual(self.manual_content)
+        self.manual_actions = tk.Frame(self.manual_body, bg=CARD)
+        self.manual_actions.pack(side="bottom", fill="x", pady=(px(8), 0))
+        self.btn_manual_apply = RoundedButton(self.manual_actions, "Apply to Steam", self._manual_apply, primary=True)
+        self.btn_manual_apply.pack(side="left")
+        self.btn_manual_export = RoundedButton(self.manual_actions, "Export PNG", self._manual_export_selected)
+        self.btn_manual_export.pack(side="left", padx=px(8))
+        self._manual_update_actions()
+        self.manual_expanded = True
+        self.scroller.canvas.bind("<Configure>", lambda _event: self.after_idle(self._sync_manual_height), add="+")
+        self.left_column.bind("<Configure>", lambda _event: self.after_idle(self._sync_manual_height), add="+")
+        self.manual_content.bind("<Configure>", lambda _event: self.after_idle(self._sync_manual_height), add="+")
         self.refresh_step1()
         self.refresh_step3()
         self._timers = [self.after(1500, self.watch_downloads), self.after(100, self.poll_events), None]
         self._tick_steam_note()
+        self.refresh_steam_games()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.update_idletasks()                       # fit the content, but never taller than the screen (Steam Deck: 800 px)
-        want_w, want_h = self.holder.winfo_reqwidth(), self.holder.winfo_reqheight()
+        self.update_idletasks()
+        want_w = self.holder.winfo_reqwidth()
         room = (screen_h or self.winfo_screenheight()) - px(110)               # title bar + taskbar
-        self.geometry("%dx%d" % (want_w + px(14), min(want_h, max(room, px(420)))))
-        self.minsize(want_w, px(380))
+        minimum_w = min(px(640), self.winfo_screenwidth() - px(40))
+        width = min(max(want_w + px(14), px(1360)), self.winfo_screenwidth() - px(40))
+        height = min(px(860), max(room, px(420)))
+        self.geometry("%dx%d+%d+%d" % (width, height,
+                      max(0, (self.winfo_screenwidth() - width) // 2),
+                      max(0, (self.winfo_screenheight() - height - px(40)) // 2)))
+        self.minsize(minimum_w, min(px(420), self.winfo_screenheight() - px(80)))
+        self.resizable(True, True)
         self._collapse = True
         self.update_steps()
 
@@ -151,13 +315,56 @@ class App(tk.Tk):
         super().destroy()
 
     # ----- look -----
+    def _layout_header(self, width, brand, actions):
+        stacked = width < brand.winfo_reqwidth() + actions.winfo_reqwidth() + px(8)
+        if stacked == self._header_stacked:
+            return
+        self._header_stacked = stacked
+        brand.pack_forget()
+        actions.pack_forget()
+        if stacked:
+            brand.pack(fill="x")
+            actions.pack(anchor="e")
+        else:
+            brand.pack(side="left")
+            actions.pack(side="right")
+
+    def _layout_columns(self, width):
+        # Side by side when both cards have room; one below the other on small displays.
+        mode = "wide" if width >= px(1260) else "stacked"
+        if mode == self._column_mode:
+            return
+        self._column_mode = mode
+        self.left_column.pack_forget()
+        self.right_column.pack_forget()
+        if mode == "wide":
+            self.left_column.pack(side="left", fill="both", expand=True)
+            self.right_column.pack(side="left", fill="both", expand=True)
+        else:
+            self.left_column.pack(fill="x")
+            self.right_column.pack(fill="x")
+        self.after_idle(self._sync_manual_height)
+
+    def _sync_manual_height(self):
+        if not hasattr(self, "manual_scroller"):
+            return
+        if self._column_mode == "wide" and getattr(self, "manual_expanded", False):
+            viewport = self.scroller.canvas.winfo_height() - self.header.winfo_height() - px(60)
+            card_height = max(self.left_column.winfo_reqheight() - px(14), viewport)
+            height = max(px(320), card_height - self.manual_body.head.winfo_reqheight()
+                         - self.manual_actions.winfo_reqheight() - px(48))
+        else:
+            height = min(max(px(320), self.manual_content.winfo_reqheight()), px(520))
+        if int(self.manual_scroller.canvas.cget("height")) != height:
+            self.manual_scroller.canvas.configure(height=height)
+
     def _style(self):
         for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
             tkfont.nametofont(name).configure(size=11)          # a little larger than the 10 pt default
 
-    def _card(self, num, title):
-        card = Card(self.holder)
-        card.pack(fill="x", padx=px(28), pady=px(7))
+    def _card(self, num, title, parent=None):
+        card = Card(parent or self.holder)
+        card.pack(fill="x", padx=px(12) if parent else px(28), pady=px(7))
         head = tk.Frame(card.body, bg=CARD)
         head.pack(fill="x")
         badge = StepBadge(head, num)
@@ -168,7 +375,7 @@ class App(tk.Tk):
         hint.pack(side="left")
         body = tk.Frame(card.body, bg=CARD)
         body.pack(fill="x", pady=(px(12), 0))
-        body.badge, body.title_lbl, body.hint, body.folded = badge, title_lbl, hint, False
+        body.badge, body.title_lbl, body.hint, body.head, body.folded = badge, title_lbl, hint, head, False
         return body
 
     def _row(self, parent, pady=None):
@@ -177,7 +384,110 @@ class App(tk.Tk):
         return r
 
     def _note(self, parent, text):
-        tk.Label(parent, text=text, bg=CARD, fg=MUTED, justify="left", wraplength=px(620), anchor="w").pack(fill="x", pady=(0, px(6)))
+        label = tk.Label(parent, text=text, bg=CARD, fg=MUTED, justify="left", wraplength=px(620), anchor="w")
+        label.pack(fill="x", pady=(0, px(6)))
+        self._wrap_to_parent(parent, label)
+
+    def _wrap_to_parent(self, parent, label):
+        parent.bind("<Configure>", lambda event: label.configure(
+            wraplength=max(px(180), event.width - px(8))), add="+")
+
+    def open_settings(self):
+        if self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.lift()
+            self.settings_window.focus_set()
+            return
+        window = tk.Toplevel(self)
+        self.settings_window = window
+        window.title("Settings · Case Covers")
+        window.configure(bg=BG)
+        window.transient(self)
+        window.resizable(True, True)
+        if getattr(self, "_icon", None):
+            window.iconphoto(False, self._icon)
+        outer = Card(window)
+        outer.pack(fill="both", expand=True, padx=px(14), pady=px(14))
+        body = outer.body
+        tk.Label(body, text="Settings", bg=CARD, fg=FG,
+                 font=("TkDefaultFont", 16, "bold")).pack(anchor="w")
+        tk.Label(body, text="SteamGridDB API key", bg=CARD, fg=FG,
+                 font=("TkDefaultFont", 12, "bold")).pack(anchor="w", pady=(px(18), px(5)))
+        self.settings_key = tk.Entry(body, show="•", bg=BG, fg=FG, insertbackground=FG,
+                                     relief="flat", highlightthickness=1, highlightbackground=LINE)
+        self.settings_key.pack(fill="x", ipady=px(7))
+        note = tk.Label(body, text="Saved keys stay in the system credential store. The existing key is never displayed here.",
+                        bg=CARD, fg=MUTED, justify="left", anchor="w")
+        note.pack(fill="x", pady=(px(8), px(10)))
+        body.bind("<Configure>", lambda event: note.configure(wraplength=max(px(220), event.width - px(8))), add="+")
+        r = self._row(body)
+        RoundedButton(r, "Check and save key", self._settings_save, primary=True).pack(side="left")
+        r = self._row(body)
+        RoundedButton(r, "Verify stored key", self._settings_verify_stored).pack(side="left")
+        RoundedButton(r, "Delete key", self._settings_delete).pack(side="left", padx=px(8))
+        self.settings_status = tk.Label(body, text="", bg=CARD, fg=MUTED,
+                                        justify="left", anchor="w")
+        self.settings_status.pack(fill="x", pady=(px(10), px(8)))
+        body.bind("<Configure>", lambda event: self.settings_status.configure(
+            wraplength=max(px(220), event.width - px(8))), add="+")
+        RoundedButton(body, "Close", window.destroy, quiet=True).pack(anchor="e")
+        self._settings_refresh_state()
+        window.update_idletasks()
+        height = max(px(440), body.winfo_reqheight() + px(80))
+        window.geometry("%dx%d+%d+%d" % (px(500), min(height, self.winfo_screenheight() - px(80)),
+                                          self.winfo_rootx() + px(45), self.winfo_rooty() + px(45)))
+        window.minsize(px(390), min(height, self.winfo_screenheight() - px(80)))
+        window.bind("<Escape>", lambda _event: window.destroy())
+        self.settings_key.focus_set()
+
+    def _settings_refresh_state(self):
+        try:
+            stored = bool(cw.load_api_key())
+            self.settings_status.configure(text="Key stored securely." if stored else "No key stored.", fg=MUTED)
+        except sc.SteamcaseError as exc:
+            self.settings_status.configure(text=str(exc), fg=RED)
+
+    def _settings_result(self, text, color=MUTED, clear=False):
+        window = self.settings_window
+        if not window or not window.winfo_exists():
+            return
+        if clear:
+            self.settings_key.delete(0, "end")
+        self.settings_status.configure(text=text, fg=color)
+
+    def _settings_save(self):
+        key = self.settings_key.get().strip()
+        if not key:
+            self._settings_result("Enter a new key first.", RED)
+            return
+        self._settings_result("Checking key…")
+        def work():
+            try:
+                self._manual_client(key).verify_key()
+                cw.save_api_key(key)
+                self.events.put(("settings_key_saved",))
+            except sc.SteamcaseError as exc:
+                self.events.put(("settings_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _settings_verify_stored(self):
+        self._settings_result("Checking stored key…")
+        def work():
+            try:
+                self._manual_client().verify_key()
+                self.events.put(("settings_key_checked",))
+            except sc.SteamcaseError as exc:
+                self.events.put(("settings_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _settings_delete(self):
+        self._settings_result("Deleting key…")
+        def work():
+            try:
+                cw.save_api_key("")
+                self.events.put(("settings_key_deleted",))
+            except sc.SteamcaseError as exc:
+                self.events.put(("settings_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
 
     def _set_state(self, body, enabled):
         st = "normal" if enabled else "disabled"
@@ -194,7 +504,8 @@ class App(tk.Tk):
         ready = self.installed_only.get() or bool(self.library_path)
         s1 = "done" if ready else "active"
         s2 = "locked" if not ready else "done" if self.cover_files else "active"
-        s3 = "done" if self.cover_files and self.applied else "active" if (self.cover_files or self.has_backup() or self.has_grid_art()) else "locked"   # Restore or Reset alone also unlock it
+        queued = any(item.get("verified_steam_id") for item in self.manual_queue)
+        s3 = "done" if queued and self.applied else "active" if (queued or self.has_backup() or self.has_grid_art()) else "locked"   # Restore or Reset alone also unlock it
         for body, status, why in ((self.step1, s1, ""), (self.step2, s2, "Finish step 1 first"), (self.step3, s3, "Make the covers first")):
             body.badge.set(status)
             body.title_lbl.configure(fg=FAINT if status == "locked" else FG)
@@ -221,6 +532,7 @@ class App(tk.Tk):
         self.sw_installed.pack(side="left")
         self.step1_status = tk.Label(body, text="Waiting for the saved game list (userdata.json)…", bg=CARD, fg=MUTED, anchor="w", justify="left", wraplength=px(620))
         self.step1_status.pack(fill="x", pady=(px(8), 0))
+        self._wrap_to_parent(body, self.step1_status)
 
     def open_download_page(self):
         try:
@@ -255,10 +567,12 @@ class App(tk.Tk):
         self.installed_only.set(False)
         self.step1_status.configure(text="Got it: %s (%d items in your library)." % (os.path.basename(path), n), fg=ACCENT)
         self.refresh_step1()
+        self.refresh_steam_games()
         return True
 
     def on_installed_only(self):
         self.refresh_step1()
+        self.refresh_steam_games()
 
     def refresh_step1(self):
         """Step 2 unlocks once we have a library file or the user chose installed games only."""
@@ -311,6 +625,7 @@ class App(tk.Tk):
         self.progress.pack(fill="x", pady=(px(10), px(6)))
         self.step2_status = tk.Label(body, text="Not started.", bg=CARD, fg=MUTED, anchor="w", justify="left", wraplength=px(620))
         self.step2_status.pack(fill="x")
+        self._wrap_to_parent(body, self.step2_status)
         self.preview = tk.Frame(body, bg=CARD)            # a few finished covers: the payoff of this step
         self._thumbs = []
 
@@ -338,12 +653,14 @@ class App(tk.Tk):
             self.preview.pack(fill="x", pady=(px(12), 0))
 
     def start_make(self):
-        if self.running:
+        if self.running or self.busy:
             return
         lib = None if self.installed_only.get() else self.library_path
         self.running = True
         self.cancel_flag.clear()
         self.cover_files = []
+        self.manual_queue[:] = [item for item in self.manual_queue if not item.get("file")]
+        self._queue_refresh()
         self.applied = False
         self.progress.configure(value=0, maximum=1)
         self.step2_status.configure(text="Looking up your games on Steam…", fg=MUTED)
@@ -371,34 +688,6 @@ class App(tk.Tk):
         except Exception as e:                      # never leave the UI stuck in "running"
             self.events.put(("error", "Unexpected problem: %s" % e))
 
-    def check_update(self):
-        """Asks GitHub whether a newer release exists. Only on click; nothing is downloaded or installed."""
-        self.btn_update.configure(state="disabled")
-        threading.Thread(target=self._update_worker, daemon=True).start()
-
-    def _update_worker(self):
-        try:
-            self.events.put(("update", sc.check_for_update()))
-        except sc.SteamcaseError as e:
-            self.events.put(("update_error", str(e)))
-        except Exception as e:
-            self.events.put(("update_error", "Unexpected problem: %s" % e))
-
-    def show_update(self, r):
-        self.btn_update.configure(state="normal")
-        if r["newer"] is False:
-            messagebox.showinfo("No update needed", "You have the latest version (%s)." % r["current"])
-            return
-        if r["newer"]:
-            text = "A newer version is available: %s (you have %s).\n\nOpen the download page in your browser? Nothing is installed automatically." % (r["latest"], r["current"])
-        else:
-            text = "The latest version is %s. This copy has no version number (it was not installed from a release), so I cannot compare.\n\nOpen the download page?" % r["latest"]
-        if messagebox.askokcancel("Update available", text, ok="Open page", cancel="Not now"):
-            try:
-                webbrowser.open(r["url"])
-            except Exception:
-                pass
-
     def poll_events(self):
         try:
             while True:
@@ -409,11 +698,6 @@ class App(tk.Tk):
                     self.step2_status.configure(text="%d of %d · %s" % (done, total, name if len(name) <= 60 else name[:57] + "…"), fg=MUTED)
                 elif ev[0] == "done":
                     self.finish_make(ev[1])
-                elif ev[0] == "update":
-                    self.show_update(ev[1])
-                elif ev[0] == "update_error":
-                    self.btn_update.configure(state="normal")
-                    messagebox.showerror("Could not check for updates", ev[1])
                 elif ev[0] == "reset_scan":
                     self.on_reset_scan(ev[1], ev[2], ev[3])
                 elif ev[0] == "step3_status":
@@ -421,19 +705,101 @@ class App(tk.Tk):
                 elif ev[0] == "step3_done":
                     self.busy = False
                     self.applied = ev[2] == "apply" if len(ev) > 2 else self.applied
+                    detail = ev[3] if len(ev) > 3 else {}
+                    if ev[2] == "apply" and detail.get("backup"):
+                        self.last_apply_backup = detail["backup"]
+                        self.last_apply_keys = tuple(detail.get("keys", ()))
+                    elif ev[2] == "restore" and detail.get("restored") == self.last_apply_backup:
+                        for item in self.manual_queue:
+                            if item["key"] in self.last_apply_keys and item.get("status") == "Applied":
+                                item["status"] = "Restored"
+                        self.last_apply_backup = None
+                        self.last_apply_keys = ()
+                        self._queue_refresh()
                     self.say3(ev[1], ACCENT)
+                    if len(ev) > 2 and ev[2] == "apply":
+                        self._manual_status("Queue applied. Restore is available in step 3.", ACCENT)
+                    if len(ev) > 2 and ev[2] in ("apply", "restore") and self.manual_verified_steam_id:
+                        self._load_current_steam_cover(self.manual_verified_steam_id,
+                                                       self.manual_game and self.manual_game["source"] == "steam")
                     self.refresh_step3()
                 elif ev[0] == "step3_error":
                     self.busy = False
                     self.say3(ev[1], RED)
                     self.refresh_step3()
                     messagebox.showerror("Could not finish", ev[1])
+                elif ev[0] == "queue_status":
+                    statuses = ev[1]
+                    selected = self.queue_list.curselection()
+                    key = self.manual_queue[selected[0]]["key"] if selected and selected[0] < len(self.manual_queue) else None
+                    for item in self.manual_queue:
+                        if item["key"] in statuses:
+                            item["status"] = statuses[item["key"]]
+                    self._queue_refresh(key)
                 elif ev[0] == "error":
                     self.running = False
                     self.step2_status.configure(text=ev[1], fg=RED)
                     self._set_state(self.step1, True)
                     self.refresh_step1()
                     messagebox.showerror("Could not make covers", ev[1])
+                elif ev[0] == "steam_games" and ev[1] == self.steam_games_token:
+                    self.steam_games = sorted(ev[2], key=lambda item: item[1].casefold())
+                    self._filter_steam_games()
+                    if not self.steam_games and not ev[4]:
+                        self.steam_game_status.configure(text="No installed games found. Load userdata.json or search by name.")
+                    elif ev[3] > len(self.steam_games) and not ev[4]:
+                        self.steam_game_status.configure(text="%d games loaded; resolving library titles…" % len(self.steam_games))
+                elif ev[0] == "steam_games_error" and ev[1] == self.steam_games_token:
+                    self.steam_game_status.configure(text=ev[2], fg=RED)
+                elif ev[0] == "manual_results" and ev[1] == self.manual_search_token:
+                    self.manual_results = ev[2]
+                    self.game_list.delete(0, "end")
+                    for game in ev[2]:
+                        details = "%s ID %s" % (game["source"], game["id"])
+                        if game.get("types"):
+                            details += " · " + ", ".join(game["types"])
+                        if game.get("verified"):
+                            details += " · verified"
+                        self.game_list.insert("end", "%s  ·  %s" % (game["name"], details))
+                    self._manual_list_visibility(self.game_list, len(ev[2]))
+                    self._manual_status("%d games found. Choose one explicitly." % len(ev[2]))
+                elif ev[0] == "manual_art" and ev[1] == self.manual_art_token:
+                    self.manual_art = ev[2]
+                    self._show_art_grid(ev[2])
+                    self._manual_status("%d images found. Choose a thumbnail to preview." % len(ev[2]))
+                elif ev[0] == "manual_current" and ev[1] == getattr(self, "manual_current_token", None):
+                    self._display_current_cover(ev[2])
+                elif ev[0] == "manual_thumb" and ev[1] == self.manual_art_token:
+                    _, _, index, url, data, error = ev
+                    if data is not None:
+                        if len(self._thumb_cache) >= 100:
+                            self._thumb_cache.pop(next(iter(self._thumb_cache)))
+                        self._thumb_cache[url] = data
+                    self._set_art_thumbnail(index, data, error)
+                elif ev[0] == "manual_preview":
+                    if ev[1] == self.manual_preview_token:
+                        self.manual_image = ev[2]
+                        self.manual_preview_path = str(ev[3])
+                        self._display_manual_preview(ev[3])
+                        self._manual_update_actions()
+                        self._manual_status("Final frame ready. Apply to Steam or export a PNG.")
+                elif ev[0] == "manual_export_selected":
+                    self._manual_status("PNG exported: %s" % ev[1], ACCENT)
+                elif ev[0] == "manual_export":
+                    files, errors = ev[1]
+                    self.manual_exported = [str(f) for f in files]
+                    self._manual_status("Exported %d covers%s" % (len(files),
+                                        ("; %d failed: %s" % (len(errors), errors[0][1])) if errors else "."))
+                elif ev[0] == "manual_error":
+                    self._manual_status(ev[1], RED)
+                elif ev[0] == "settings_key_saved":
+                    self._settings_result("SteamGridDB key checked and stored securely.", ACCENT, clear=True)
+                elif ev[0] == "settings_key_deleted":
+                    self._settings_result("SteamGridDB key deleted from the credential store.", ACCENT, clear=True)
+                elif ev[0] == "settings_key_checked":
+                    self._settings_result("Stored SteamGridDB key is valid.", ACCENT)
+                elif ev[0] == "settings_error":
+                    self._settings_result(ev[1], RED)
         except queue.Empty:
             pass
         self._timers[1] = self.after(100, self.poll_events)
@@ -441,6 +807,20 @@ class App(tk.Tk):
     def finish_make(self, res):
         self.running = False
         self.cover_files = res["files"]
+        titles = dict(self.steam_games)
+        for path in self.cover_files:
+            appid = int(sc.appid_of(path)) if sc.appid_of(path) else None
+            if not appid or any(item.get("verified_steam_id") and item["steam_id"] == appid
+                                for item in self.manual_queue):
+                continue
+            name = titles.get(appid) or os.path.basename(path).rsplit("_", 1)[0].replace("_", " ")
+            self.manual_queue.append({"key": "steam:%d" % appid, "name": name,
+                                      "platform": "steam", "source": "Steam CDN", "image": None,
+                                      "file": str(path), "preview_path": str(path), "steam_id": appid,
+                                      "verified_steam_id": True,
+                                      "game": {"id": appid, "name": name, "source": "steam"},
+                                      "status": "Queued"})
+        self._queue_refresh()
         n, miss, bad = res["ok"], len(res["missing"]), len(res["failed"])
         text = "%s%d covers ready." % ("Stopped. " if res["cancelled"] else "Done. ", n)
         if miss:
@@ -473,10 +853,778 @@ class App(tk.Tk):
         except (OSError, sc.SteamcaseError):
             messagebox.showinfo("Covers folder", "Could not open the folder. It is here:\n\n%s" % folder)
 
+    # ----- independent search and export -----
+    def toggle_manual(self):
+        self.manual_expanded = not self.manual_expanded
+        if self.manual_expanded:
+            self.manual_body.pack(fill="x", pady=(px(12), 0))
+        else:
+            self.manual_body.pack_forget()
+        self.manual_toggle.text = "Collapse" if self.manual_expanded else "Expand"
+        self.manual_toggle.draw()
+        self._sync_manual_height()
+        self.after_idle(self.scroller._update)
+
+    def _build_manual(self, body):
+        self.manual_results, self.manual_art, self.manual_queue = [], [], []
+        self.queue_edit_key = None
+        self.queue_serial = 0
+        self.queue_preview_photo = None
+        self.manual_preview_path = None
+        self.manual_game = self.manual_image = None
+        self.steam_games, self.filtered_steam_games = [], []
+        self.steam_games_token = 0
+        self.manual_verified_steam_id = None
+        self.manual_preview_token = self.manual_search_token = self.manual_art_token = self.manual_current_token = 0
+        self.manual_exported = []
+        self.manual_source = tk.StringVar(value="Steam CDN")
+        self.manual_platform = tk.StringVar(value="steam")
+        self.manual_term = tk.StringVar()
+        self.manual_steam_id = tk.StringVar()
+        self.manual_steam_id.trace_add("write", lambda *_: self._manual_update_actions())
+        self.manual_folder = tk.StringVar(value=self.covers_dir)
+        self.steam_game_query = tk.StringVar()
+        self._manual_photo = None
+        self._current_photo = None
+        self._note(body, "Choose a Steam game or search by name. Pick artwork, inspect the frame, then apply or export.")
+        mode_row = self._row(body)
+        self.btn_library_mode = RoundedButton(mode_row, "Steam library", lambda: self._editor_mode("library"), primary=True)
+        self.btn_library_mode.pack(side="left")
+        self.btn_search_mode = RoundedButton(mode_row, "Search by name", lambda: self._editor_mode("search"))
+        self.btn_search_mode.pack(side="left", padx=px(8))
+        self.library_panel = tk.Frame(body, bg=CARD)
+        self.library_panel.pack(fill="x")
+        library_search = self._row(self.library_panel)
+        tk.Entry(library_search, textvariable=self.steam_game_query).pack(side="left", fill="x", expand=True)
+        RoundedButton(library_search, "Refresh", self.refresh_steam_games, quiet=True).pack(side="left", padx=(px(8), 0))
+        self.steam_game_status = tk.Label(self.library_panel, text="Looking for Steam games…", bg=CARD, fg=MUTED, anchor="w")
+        self.steam_game_status.pack(fill="x")
+        library_list_frame = tk.Frame(self.library_panel, bg=CARD)
+        library_list_frame.pack(fill="x", pady=px(4))
+        self.steam_game_list = tk.Listbox(library_list_frame, height=5, bg=BG, fg=FG,
+                                         selectbackground=ACCENT, exportselection=False)
+        steam_scroll = tk.Scrollbar(library_list_frame, orient="vertical", command=self.steam_game_list.yview,
+                                    width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        self.steam_game_list.configure(yscrollcommand=steam_scroll.set)
+        steam_scroll.pack(side="right", fill="y")
+        self.steam_game_list.pack(side="left", fill="both", expand=True)
+        self.steam_game_list.bind("<<ListboxSelect>>", self._pick_library_game)
+        self.steam_game_query.trace_add("write", lambda *_: self._filter_steam_games())
+        self.manual_search_panel = tk.Frame(body, bg=CARD)
+        r = self._row(body)
+        self.platform_row = r
+        tk.Label(r, text="Platform", bg=CARD, fg=FG).pack(side="left")
+        platforms = load_catalog()["platforms"]
+        self.manual_platform_names = {p["name"]: p["id"] for p in platforms}
+        names = [p["name"] for p in platforms]
+        self.manual_platform.set("Steam")
+        menu = tk.OptionMenu(r, self.manual_platform, *names, command=lambda _: self._manual_platform_changed())
+        menu.configure(bg=CARD, fg=FG, highlightthickness=0)
+        menu.pack(side="left", padx=px(8))
+        r = self._row(body)
+        tk.Label(r, text="Image source", bg=CARD, fg=FG).pack(side="left")
+        source = tk.OptionMenu(r, self.manual_source, "Steam CDN", "SteamGridDB", "Local file",
+                               command=lambda _: self._manual_source_changed())
+        source.configure(bg=CARD, fg=FG, highlightthickness=0)
+        source.pack(side="left", padx=px(8))
+        RoundedButton(r, "Import image", self._manual_local, quiet=True).pack(side="left", padx=px(8))
+        r = self._row(self.manual_search_panel)
+        tk.Entry(r, textvariable=self.manual_term).pack(fill="x", expand=True)
+        r = self._row(self.manual_search_panel)
+        RoundedButton(r, "Search games", self._manual_search).pack(side="left")
+        self.game_holder = tk.Frame(self.manual_search_panel, bg=CARD)
+        self.game_list = tk.Listbox(self.game_holder, height=1, bg=BG, fg=FG, selectbackground=ACCENT,
+                                    exportselection=False)
+        game_vertical = tk.Scrollbar(self.game_holder, orient="vertical", command=self.game_list.yview,
+                                     width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        game_horizontal = tk.Scrollbar(self.game_holder, orient="horizontal", command=self.game_list.xview,
+                                       width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        self.game_list.configure(yscrollcommand=game_vertical.set, xscrollcommand=game_horizontal.set)
+        game_vertical.pack(side="right", fill="y")
+        game_horizontal.pack(side="bottom", fill="x")
+        self.game_list.pack(side="left", fill="both", expand=True)
+        self.game_list.bind("<<ListboxSelect>>", self._manual_pick_game)
+        self.art_holder = tk.Frame(body, bg=CARD)
+        tk.Label(self.art_holder, text="Artwork · select an image", bg=CARD, fg=FG,
+                 anchor="w").pack(fill="x", pady=(px(5), px(4)))
+        gallery = tk.Frame(self.art_holder, bg=CARD)
+        gallery.pack(fill="x")
+        self.art_grid = tk.Canvas(gallery, bg=CARD, highlightthickness=0, height=px(280))
+        self.art_scrollbar = tk.Scrollbar(gallery, orient="vertical", command=self.art_grid.yview,
+                                         width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        self.art_scrollbar.pack(side="right", fill="y")
+        self.art_grid.pack(side="left", fill="x", expand=True)
+        self.art_grid.configure(yscrollcommand=self.art_scrollbar.set)
+        self.art_inner = tk.Frame(self.art_grid, bg=CARD)
+        self._art_window = self.art_grid.create_window(0, 0, window=self.art_inner, anchor="nw")
+        self.art_inner.bind("<Configure>", lambda _event: self.art_grid.configure(
+            scrollregion=self.art_grid.bbox("all")), add="+")
+        self.art_grid.bind("<Configure>", self._art_grid_resized, add="+")
+        for widget in (self.art_grid, self.art_inner):
+            widget.bind("<MouseWheel>", self._art_wheel)
+            widget.bind("<Button-4>", lambda _event: self._art_scroll(-1))
+            widget.bind("<Button-5>", lambda _event: self._art_scroll(1))
+        self._art_tiles, self._art_thumb_labels, self._art_photos = [], [], {}
+        self._art_columns = 0
+        self.manual_art_selected = None
+        self.manual_id_row = r = self._row(body)
+        tk.Label(r, text="Steam artwork ID (optional)", bg=CARD, fg=FG).pack(side="left")
+        tk.Entry(r, textvariable=self.manual_steam_id, width=15).pack(side="left", padx=px(8))
+        r = self._row(body)
+        RoundedButton(r, "Choose shortcut", self._manual_choose_shortcut).pack(side="left", padx=px(8))
+        self._note(body, "Steam IDs fill automatically. Choose a verified shortcut for non-Steam games. Covers without an ID can still be exported.")
+        preview_row = self._row(body)
+        current = tk.Frame(preview_row, bg=CARD)
+        current.pack(side="left", anchor="n")
+        tk.Label(current, text="Current Steam cover", bg=CARD, fg=MUTED).pack(anchor="w")
+        self.current_cover = tk.Label(current, bg=CARD, fg=MUTED, text="Choose a Steam game.",
+                                      width=20, height=3)
+        self.current_cover.pack(anchor="w")
+        final = tk.Frame(preview_row, bg=CARD)
+        final.pack(side="left", anchor="n", padx=(px(15), 0))
+        tk.Label(final, text="New framed cover", bg=CARD, fg=FG).pack(anchor="w")
+        self.manual_preview = tk.Label(final, bg=CARD, fg=MUTED, text="Choose artwork to preview.")
+        self.manual_preview.pack(anchor="w")
+        self.current_cover_group = current
+        self.queue_panel = tk.Frame(body, bg=CARD)
+        tk.Label(self.queue_panel, text="Cover queue · select a game to preview or edit", bg=CARD,
+                 fg=FG, anchor="w").pack(fill="x", pady=(px(7), px(4)))
+        queue_row = tk.Frame(self.queue_panel, bg=CARD)
+        queue_row.pack(fill="x")
+        self.queue_list = tk.Listbox(queue_row, height=3, bg=BG, fg=FG, selectbackground=ACCENT,
+                                     exportselection=False)
+        queue_scroll = tk.Scrollbar(queue_row, orient="vertical", command=self.queue_list.yview,
+                                    width=px(14), troughcolor=BG, bg=LINE, activebackground=ACCENT)
+        self.queue_list.configure(yscrollcommand=queue_scroll.set)
+        queue_scroll.pack(side="right", fill="y")
+        self.queue_list.pack(side="left", fill="both", expand=True)
+        self.queue_list.bind("<<ListboxSelect>>", self._queue_selected)
+        queue_selection = tk.Frame(self.queue_panel, bg=CARD)
+        queue_selection.pack(fill="x", pady=px(5))
+        self.queue_preview = tk.Label(queue_selection, bg=CARD, fg=MUTED, text="Select a cover.")
+        self.queue_preview.pack(side="left", anchor="n")
+        self.queue_detail = tk.Label(queue_selection, bg=CARD, fg=MUTED, text="", anchor="nw",
+                                     justify="left", wraplength=px(310))
+        self.queue_detail.pack(side="left", fill="x", expand=True, anchor="n", padx=(px(10), 0))
+        queue_buttons = self._row(self.queue_panel)
+        RoundedButton(queue_buttons, "Edit selected", self._queue_edit).pack(side="left")
+        RoundedButton(queue_buttons, "Remove selected", self._queue_remove).pack(side="left", padx=px(8))
+        r = self._row(body)
+        self.batch_row = r
+        RoundedButton(r, "Add to batch", self._manual_add).pack(side="left")
+        RoundedButton(r, "Choose export folder", self._manual_choose_folder).pack(side="left", padx=px(8))
+        RoundedButton(r, "Export batch", self._manual_export).pack(side="left")
+        self.manual_queue_label = tk.Label(body, text="Queue: empty", bg=CARD, fg=MUTED, anchor="w")
+        self.manual_queue_label.pack(fill="x")
+        self.manual_folder_label = tk.Label(body, text=self.manual_folder.get(), bg=CARD, fg=MUTED,
+                                            anchor="w", justify="left")
+        self.manual_folder_label.pack(fill="x")
+        self.manual_status = tk.Label(body, text="", bg=CARD, fg=MUTED, anchor="w", justify="left")
+        self.manual_status.pack(fill="x", pady=px(4))
+        body.bind("<Configure>", lambda event: self._manual_wrap_labels(event.width), add="+")
+
+    def _manual_wrap_labels(self, width):
+        wrap = max(px(220), width - px(8))
+        for label in (self.manual_queue_label, self.manual_folder_label, self.manual_status):
+            label.configure(wraplength=wrap)
+        self.queue_detail.configure(wraplength=max(px(120), width - px(120)))
+
+    def _queue_refresh(self, selected_key=None):
+        self.queue_list.delete(0, "end")
+        for item in self.manual_queue:
+            target = "Steam ID %s" % item["steam_id"] if item.get("verified_steam_id") else "PNG only"
+            self.queue_list.insert("end", "%s  ·  %s  ·  %s" %
+                                   (item["name"], target, item.get("status", "Queued")))
+        if self.manual_queue:
+            self.queue_panel.pack(fill="x", before=self.batch_row)
+            self.queue_list.configure(height=min(5, len(self.manual_queue)))
+            keys = [item["key"] for item in self.manual_queue]
+            index = keys.index(selected_key) if selected_key in keys else 0
+            self.queue_list.selection_set(index)
+            self.queue_list.see(index)
+            self._queue_selected()
+        else:
+            self.queue_panel.pack_forget()
+            self.queue_preview.configure(image="", text="Select a queued cover.")
+            self.queue_detail.configure(text="")
+            self.queue_preview_photo = None
+        n = sum(bool(item.get("verified_steam_id")) for item in self.manual_queue)
+        self.manual_queue_label.configure(text="Queue: %d covers · %d ready for Steam" %
+                                          (len(self.manual_queue), n) if self.manual_queue else "Queue: empty")
+        self.refresh_step3()
+
+    def _queue_selected(self, _event=None):
+        selection = self.queue_list.curselection()
+        if not selection or selection[0] >= len(self.manual_queue):
+            return
+        item = self.manual_queue[selection[0]]
+        self.queue_detail.configure(text="%s\n%s\n%s" %
+                                    (item["name"], "Steam ID %s" % item["steam_id"]
+                                     if item.get("verified_steam_id") else "PNG export only",
+                                     item.get("status", "Queued")))
+        path = item.get("preview_path") or item.get("file") or item.get("image")
+        try:
+            with sc.Image.open(path, formats=["PNG", "JPEG", "WEBP"]) as source:
+                thumb = source.convert("RGBA")
+                thumb.thumbnail((px(70), px(105)), sc.Image.LANCZOS)
+            buffer = io.BytesIO()
+            thumb.save(buffer, "PNG")
+            self.queue_preview_photo = tk.PhotoImage(master=self, data=base64.b64encode(buffer.getvalue()))
+            self.queue_preview.configure(image=self.queue_preview_photo, text="")
+        except (OSError, ValueError, TypeError):
+            self.queue_preview.configure(image="", text="Preview unavailable.")
+
+    def _queue_edit(self):
+        selection = self.queue_list.curselection()
+        if not selection or self.busy:
+            return
+        item = self.manual_queue[selection[0]]
+        self.queue_edit_key = item["key"]
+        game = item.get("game") or {"id": item.get("steam_id"), "name": item["name"], "source": "steam"}
+        self._editor_mode("library" if game["source"] == "steam" else "search")
+        self.manual_platform.set(next((name for name, ident in self.manual_platform_names.items()
+                                       if ident == item["platform"]), "Steam"))
+        self.manual_source.set(item.get("source", "Steam CDN"))
+        self._select_game(game)
+        if item.get("verified_steam_id") and game["source"] != "steam":
+            self.manual_verified_steam_id = item["steam_id"]
+            self.manual_steam_id.set(str(item["steam_id"]))
+            self.current_cover_group.pack(side="left", anchor="n", before=self.manual_preview.master)
+            self._load_current_steam_cover(item["steam_id"], allow_cdn=False)
+        if item.get("image"):
+            self._manual_prepare_preview(item["image"])
+        self._manual_status("Editing %s. Add to batch to update this queued cover." % item["name"])
+
+    def _queue_remove(self):
+        selection = self.queue_list.curselection()
+        if not selection or self.busy:
+            return
+        item = self.manual_queue.pop(selection[0])
+        if self.queue_edit_key == item["key"]:
+            self.queue_edit_key = None
+        self._queue_refresh()
+        self._manual_status("Removed %s from the queue." % item["name"])
+
+    def _queue_upsert(self, item):
+        edited = self.queue_edit_key
+        key = "steam:%d" % item["steam_id"] if item.get("verified_steam_id") else edited
+        if key is None:
+            self.queue_serial += 1
+            key = "local:%d" % self.queue_serial
+        item["key"] = key
+        item["status"] = "Queued" if item.get("verified_steam_id") else "Export only"
+        if edited and edited != key:
+            self.manual_queue[:] = [old for old in self.manual_queue if old["key"] != edited]
+        index = next((i for i, old in enumerate(self.manual_queue) if old["key"] == key), None)
+        if index is None and item.get("verified_steam_id"):
+            index = next((i for i, old in enumerate(self.manual_queue)
+                          if old.get("verified_steam_id") and old["steam_id"] == item["steam_id"]), None)
+        if index is None:
+            self.manual_queue.append(item)
+        else:
+            self.manual_queue[index] = item
+        self.queue_edit_key = None
+        self._queue_refresh(item["key"])
+
+    def _manual_list_visibility(self, widget, count):
+        if count:
+            widget.configure(height=min(6, count))
+            if not self.game_holder.winfo_manager():
+                self.game_holder.pack(fill="x", pady=px(5))
+        else:
+            self.game_holder.pack_forget()
+
+    def _editor_mode(self, mode):
+        self.library_panel.pack_forget()
+        self.manual_search_panel.pack_forget()
+        if mode == "library":
+            self.library_panel.pack(fill="x", before=self.platform_row)
+        else:
+            anchor = self.art_holder if self.art_holder.winfo_manager() else self.manual_id_row
+            self.manual_search_panel.pack(fill="x", before=anchor)
+        self.btn_library_mode.primary = mode == "library"
+        self.btn_search_mode.primary = mode == "search"
+        self.btn_library_mode.draw()
+        self.btn_search_mode.draw()
+
+    def refresh_steam_games(self):
+        self.steam_games_token += 1
+        token = self.steam_games_token
+        library = None if self.installed_only.get() else self.library_path
+        self.steam_game_status.configure(text="Looking for Steam games…", fg=MUTED)
+
+        def work():
+            try:
+                games = sc.load_games(sc.steam_dir(), library)
+                known = [(appid, name) for appid, name in games.items() if name]
+                self.events.put(("steam_games", token, known, len(games), False))
+                if any(name is None for name in games.values()):
+                    resolved = sc.list_games(games)
+                    self.events.put(("steam_games", token, resolved, len(games), True))
+            except (sc.SteamcaseError, OSError, ValueError) as exc:
+                self.events.put(("steam_games_error", token, str(exc)))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _filter_steam_games(self):
+        needle = self.steam_game_query.get().strip().casefold()
+        self.filtered_steam_games = [game for game in self.steam_games
+                                     if not needle or needle in game[1].casefold() or needle in str(game[0])]
+        self.steam_game_list.delete(0, "end")
+        if self.filtered_steam_games:
+            self.steam_game_list.insert("end", *("%s  ·  Steam ID %d" % (name, appid)
+                                                  for appid, name in self.filtered_steam_games))
+        self.steam_game_status.configure(text="%d of %d Steam games" %
+                                         (len(self.filtered_steam_games), len(self.steam_games)))
+
+    def _pick_library_game(self, _event=None):
+        selection = self.steam_game_list.curselection()
+        if not selection or selection[0] >= len(self.filtered_steam_games):
+            return
+        appid, name = self.filtered_steam_games[selection[0]]
+        self.steam_game_list.configure(height=2)
+        self.manual_platform.set("Steam")
+        self.manual_source.set("Steam CDN")
+        self._select_game({"id": appid, "name": name, "source": "steam"})
+
+    def _art_grid_resized(self, event):
+        self.art_grid.itemconfigure(self._art_window, width=event.width)
+        columns = max(1, event.width // px(128))
+        if columns != self._art_columns:
+            self._art_columns = columns
+            for index, tile in enumerate(self._art_tiles):
+                tile.grid(row=index // columns, column=index % columns,
+                          padx=px(4), pady=px(5), sticky="n")
+
+    def _clear_art_grid(self):
+        for tile in self._art_tiles:
+            tile.destroy()
+        self._art_tiles, self._art_thumb_labels, self._art_photos = [], [], {}
+        self.manual_art_selected = None
+        self.art_holder.pack_forget()
+
+    def _show_art_grid(self, arts):
+        self._clear_art_grid()
+        if not arts:
+            return
+        self.art_holder.pack(fill="x", before=self.manual_id_row, pady=px(5))
+        columns = max(1, self.art_grid.winfo_width() // px(128))
+        self._art_columns = columns
+        token = self.manual_art_token
+        for index, art in enumerate(arts):
+            tile = tk.Frame(self.art_inner, bg=BG, highlightthickness=2,
+                            highlightbackground=LINE, highlightcolor=ACCENT,
+                            width=px(116), height=px(186), takefocus=True)
+            tile.pack_propagate(False)
+            tile.grid(row=index // columns, column=index % columns,
+                      padx=px(4), pady=px(5), sticky="n")
+            image = tk.Label(tile, text="Loading…", bg=BG, fg=MUTED,
+                             wraplength=px(102), justify="center")
+            image.pack(fill="both", expand=True, padx=px(3), pady=(px(3), 0))
+            caption = "%s · %s" % (art.get("style") or "Image", art["id"])
+            foot = tk.Label(tile, text=caption, bg=BG, fg=FG,
+                            wraplength=px(105), justify="center")
+            foot.pack(fill="x", padx=px(2), pady=(0, px(3)))
+            for widget in (tile, image, foot):
+                widget.bind("<Button-1>", lambda _event, i=index: self._manual_pick_art(i))
+                widget.bind("<MouseWheel>", self._art_wheel)
+                widget.bind("<Button-4>", lambda _event: self._art_scroll(-1))
+                widget.bind("<Button-5>", lambda _event: self._art_scroll(1))
+            tile.bind("<Return>", lambda _event, i=index: self._manual_pick_art(i))
+            tile.bind("<space>", lambda _event, i=index: self._manual_pick_art(i))
+            self._art_tiles.append(tile)
+            self._art_thumb_labels.append(image)
+            url = art.get("thumb") or art["url"]
+            if url in self._thumb_cache:
+                self._set_art_thumbnail(index, self._thumb_cache[url])
+            else:
+                self._thumb_tasks.put((token, index, url))
+        self.art_grid.yview_moveto(0)
+
+    def _art_scroll(self, units):
+        self.art_grid.yview_scroll(units, "units")
+        return "break"
+
+    def _art_wheel(self, event):
+        return self._art_scroll(-1 if event.delta > 0 else 1)
+
+    def _thumbnail_loop(self):
+        while not self._quit.is_set():
+            try:
+                token, index, url = self._thumb_tasks.get(timeout=0.3)
+            except queue.Empty:
+                continue
+            if token == self.manual_art_token:
+                self._manual_thumb_worker(token, index, url)
+
+    def _manual_thumb_worker(self, token, index, url):
+        try:
+            path = cw.ArtworkClient().image(url)
+            with sc.Image.open(path) as source:
+                thumb = source.convert("RGBA")
+                thumb.thumbnail((px(94), px(132)), sc.Image.LANCZOS)
+            canvas = sc.Image.new("RGBA", (px(94), px(132)), BG)
+            canvas.alpha_composite(thumb, ((canvas.width - thumb.width) // 2,
+                                           (canvas.height - thumb.height) // 2))
+            buffer = io.BytesIO()
+            canvas.save(buffer, "PNG")
+            self.events.put(("manual_thumb", token, index, url, buffer.getvalue(), None))
+        except Exception as exc:
+            self.events.put(("manual_thumb", token, index, url, None, str(exc)))
+
+    def _set_art_thumbnail(self, index, data=None, error=None):
+        if index >= len(self._art_thumb_labels):
+            return
+        label = self._art_thumb_labels[index]
+        if error:
+            label.configure(image="", text="Image unavailable", fg=RED)
+            return
+        photo = tk.PhotoImage(master=self, data=base64.b64encode(data))
+        self._art_photos[index] = photo
+        label.configure(image=photo, text="")
+
+    def _manual_status(self, text, color=MUTED):
+        self.manual_status.configure(text=text, fg=color)
+
+    def _manual_update_actions(self):
+        if not hasattr(self, "btn_manual_apply"):
+            return
+        ready = bool(self.manual_game and self.manual_image) and not self.busy
+        steam_id = self.manual_steam_id.get().strip()
+        verified = bool(steam_id.isdecimal() and self.manual_verified_steam_id == int(steam_id))
+        self.btn_manual_export.configure(state="normal" if ready else "disabled")
+        queued = any(item.get("verified_steam_id") for item in self.manual_queue)
+        self.btn_manual_apply.configure(state="normal" if not self.busy and not self.running and
+                                        ((ready and verified) or queued) else "disabled")
+
+    def _manual_source_changed(self):
+        self.manual_search_token += 1
+        self.manual_art_token += 1
+        self.manual_preview_token += 1
+        self.manual_results = self.manual_art = []
+        self.manual_image = None
+        self.manual_preview_path = None
+        self.game_list.delete(0, "end")
+        self.game_holder.pack_forget()
+        self._clear_art_grid()
+        self.manual_preview.configure(image="", text="Choose artwork to preview.")
+        self._manual_update_actions()
+        if self.manual_game and self.manual_game["source"] == "steam":
+            self._load_art_for_selected()
+        else:
+            self.manual_game = None
+            self.manual_verified_steam_id = None
+            self.manual_steam_id.set("")
+            self.current_cover_group.pack_forget()
+
+    def _manual_platform_changed(self):
+        if not self.manual_game:
+            wanted = "Steam CDN" if self.manual_platform_names[self.manual_platform.get()] == "steam" else "SteamGridDB"
+            if self.manual_source.get() != "Local file" and self.manual_source.get() != wanted:
+                self.manual_source.set(wanted)
+                self._manual_source_changed()
+        if self.manual_image and self.manual_game:
+            self._manual_prepare_preview(self.manual_image)
+
+    def _manual_client(self, key=None):
+        return cw.ArtworkClient(cw.load_api_key() if key is None else key)
+
+    def _manual_search(self):
+        source = self.manual_source.get()
+        if source == "Local file":
+            self._manual_status("Import a local image, then enter its game title.")
+            return
+        term = self.manual_term.get().strip()
+        self.manual_game = self.manual_image = None
+        self.manual_preview_path = None
+        self.manual_verified_steam_id = None
+        self.manual_steam_id.set("")
+        self.manual_current_token += 1
+        self.current_cover_group.pack_forget()
+        self.manual_art_token += 1
+        self.manual_preview_token += 1
+        self._clear_art_grid()
+        self.manual_preview.configure(image="", text="Choose artwork to preview.")
+        self.manual_results = []
+        self.game_list.delete(0, "end")
+        self.game_holder.pack_forget()
+        self._manual_update_actions()
+        self.manual_search_token += 1
+        token = self.manual_search_token
+        self._manual_status("Searching…")
+        def work():
+            try:
+                result = self._manual_client().search(term, "steam" if source == "Steam CDN" else "steamgriddb")
+                self.events.put(("manual_results", token, result))
+            except sc.SteamcaseError as exc:
+                self.events.put(("manual_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _manual_pick_game(self, _event=None):
+        selection = self.game_list.curselection()
+        if not selection or selection[0] >= len(self.manual_results):
+            return
+        game = self.manual_results[selection[0]]
+        self._select_game(game)
+
+    def _select_game(self, game):
+        self.manual_game = dict(game)
+        self.manual_image = None
+        self.manual_preview_path = None
+        self.manual_art = []
+        if game["source"] == "steam":
+            self.manual_verified_steam_id = int(game["id"])
+            self.manual_steam_id.set(str(game["id"]))
+            self.current_cover_group.pack(side="left", anchor="n", before=self.manual_preview.master)
+            self.current_cover.configure(image="", text="Loading current cover…")
+            self._load_current_steam_cover(int(game["id"]))
+        else:
+            self.manual_verified_steam_id = None
+            self.manual_steam_id.set("")
+            self.current_cover_group.pack_forget()
+        self._load_art_for_selected()
+
+    def _load_current_steam_cover(self, appid, allow_cdn=True):
+        self.manual_current_token = getattr(self, "manual_current_token", 0) + 1
+        token = self.manual_current_token
+
+        def work():
+            try:
+                path = cw.current_steam_cover(sc.steam_dir(), self._acc(), appid)
+                if path is None and allow_cdn:
+                    client = cw.ArtworkClient()
+                    candidates = client.steam_art(appid)
+                    if candidates:
+                        path = client.image(candidates[0]["url"])
+                self.events.put(("manual_current", token, path))
+            except (sc.SteamcaseError, OSError) as exc:
+                self.events.put(("manual_current", token, None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _load_art_for_selected(self):
+        if not self.manual_game:
+            return
+        self.manual_art_token += 1
+        token = self.manual_art_token
+        self._clear_art_grid()
+        self.manual_preview_token += 1
+        self.manual_preview.configure(image="", text="Choose artwork to preview.")
+        self.manual_image = None
+        self.manual_preview_path = None
+        self._manual_update_actions()
+        game = dict(self.manual_game)
+        source = self.manual_source.get()
+        if source == "Local file":
+            self._manual_status("Import a PNG, JPG or WebP image for this game.")
+            return
+        self._manual_status("Loading available artwork…")
+
+        def work():
+            try:
+                client = cw.ArtworkClient() if source == "Steam CDN" else self._manual_client()
+                if source == "Steam CDN":
+                    if game["source"] != "steam":
+                        raise sc.SteamcaseError("Choose a Steam game to browse Steam CDN artwork.")
+                    art = client.steam_art(game["id"])
+                elif game["source"] == "steam":
+                    art = client.grids_steam(game["id"])
+                else:
+                    art = client.grids(game["id"])
+                self.events.put(("manual_art", token, art))
+            except sc.SteamcaseError as exc:
+                self.events.put(("manual_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _manual_pick_art(self, index):
+        if index >= len(self.manual_art):
+            return
+        if self.manual_art_selected is not None and self.manual_art_selected < len(self._art_tiles):
+            self._art_tiles[self.manual_art_selected].configure(highlightbackground=LINE)
+        self.manual_art_selected = index
+        self._art_tiles[index].configure(highlightbackground=ACCENT)
+        art = self.manual_art[index]
+        self.manual_image = None
+        self.manual_preview_path = None
+        self._manual_update_actions()
+        self.manual_preview.configure(image="", text="Rendering the selected frame…")
+        self.manual_preview_token += 1
+        token = self.manual_preview_token
+        platform_id = self.manual_platform_names[self.manual_platform.get()]
+        name = self.manual_game["name"]
+        self._manual_status("Downloading and rendering selected artwork…")
+        def work():
+            try:
+                image = cw.ArtworkClient().image(art["url"])
+                self._manual_render(image, token, platform_id, name)
+            except sc.SteamcaseError as exc:
+                self.events.put(("manual_error", str(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _manual_render(self, image, token, platform_id, name):
+        try:
+            preview = cw.export_one(image, platform_id, name, cw.cache_dir() / "previews")
+            self.events.put(("manual_preview", token, image, preview))
+        except (sc.SteamcaseError, OSError) as exc:
+            self.events.put(("manual_error", str(exc)))
+
+    def _manual_prepare_preview(self, image):
+        self.manual_preview_token += 1
+        self.manual_image = None
+        self.manual_preview_path = None
+        self._manual_update_actions()
+        self.manual_preview.configure(image="", text="Rendering the selected frame…")
+        platform_id = self.manual_platform_names[self.manual_platform.get()]
+        name = self.manual_game["name"]
+        threading.Thread(target=self._manual_render,
+                         args=(image, self.manual_preview_token, platform_id, name), daemon=True).start()
+
+    def _display_manual_preview(self, path):
+        with sc.Image.open(path) as im:
+            thumb = im.convert("RGBA").resize((px(160), px(240)), sc.Image.LANCZOS)
+        buffer = io.BytesIO()
+        thumb.save(buffer, "PNG")
+        self._manual_photo = tk.PhotoImage(master=self, data=base64.b64encode(buffer.getvalue()))
+        self.manual_preview.configure(image=self._manual_photo, text="")
+
+    def _display_current_cover(self, path):
+        if not path:
+            self.current_cover.configure(image="", text="No current portrait found.")
+            return
+        try:
+            with sc.Image.open(path, formats=["PNG", "JPEG", "WEBP"]) as image:
+                thumb = image.convert("RGBA")
+                thumb.thumbnail((px(120), px(180)), sc.Image.LANCZOS)
+            buffer = io.BytesIO()
+            thumb.save(buffer, "PNG")
+            self._current_photo = tk.PhotoImage(master=self, data=base64.b64encode(buffer.getvalue()))
+            self.current_cover.configure(image=self._current_photo, text="", width=0, height=0)
+        except (OSError, ValueError):
+            self.current_cover.configure(image="", text="Current cover unavailable.")
+
+    def _manual_local(self):
+        path = filedialog.askopenfilename(title="Import cover image", filetypes=[
+            ("Cover images", "*.png *.jpg *.jpeg *.webp"), ("All files", "*.*")])
+        if not path:
+            return
+        try:
+            cw.validate_local_image(path)
+        except sc.SteamcaseError as exc:
+            self._manual_status(str(exc), RED)
+            return
+        self.manual_source.set("Local file")
+        self.manual_art_token += 1
+        self._clear_art_grid()
+        if not self.manual_game:
+            title = self.manual_term.get().strip() or os.path.splitext(os.path.basename(path))[0]
+            self.manual_game = {"name": title, "id": None, "source": "local"}
+            self.manual_verified_steam_id = None
+            self.manual_steam_id.set("")
+        self._manual_prepare_preview(path)
+
+    def _manual_choose_shortcut(self):
+        try:
+            steam = sc.steam_dir()
+            options = cw.list_shortcuts(steam, self._acc())
+        except sc.SteamcaseError as exc:
+            self._manual_status(str(exc), RED)
+            return
+        if not options:
+            self._manual_status("No Steam shortcuts found for this account.", RED)
+            return
+        picked = ShortcutPicker(self, options).show()
+        if picked:
+            self.manual_verified_steam_id = int(picked)
+            self.manual_steam_id.set(str(picked))
+            self.current_cover_group.pack(side="left", anchor="n", before=self.manual_preview.master)
+            self.current_cover.configure(image="", text="Loading current cover…")
+            self._load_current_steam_cover(int(picked), allow_cdn=False)
+            self._manual_update_actions()
+            self._manual_status("Steam shortcut ID selected: %s" % picked)
+
+    def _selected_cover_item(self, require_verified_id=False):
+        if not self.manual_game or not self.manual_image:
+            raise sc.SteamcaseError("Choose a game and artwork, then wait for the final frame preview.")
+        raw = self.manual_steam_id.get().strip()
+        if raw and (not raw.isdecimal() or not 0 < int(raw) < 2 ** 32):
+            raise sc.SteamcaseError("Steam artwork ID must be a positive 32-bit number.")
+        steam_id = int(raw) if raw else None
+        if require_verified_id and (steam_id is None or steam_id != self.manual_verified_steam_id):
+            raise sc.SteamcaseError("Choose a Steam game or a verified shortcut before applying artwork.")
+        return {"name": self.manual_game["name"],
+                "platform": self.manual_platform_names[self.manual_platform.get()],
+                "image": str(self.manual_image), "steam_id": steam_id}
+
+    def _manual_export_selected(self):
+        try:
+            item = self._selected_cover_item()
+        except sc.SteamcaseError as exc:
+            self._manual_status(str(exc), RED)
+            return
+        folder = self.manual_folder.get()
+        self._manual_status("Exporting the selected PNG…")
+
+        def work():
+            try:
+                path = cw.export_one(item["image"], item["platform"], item["name"], folder, item["steam_id"])
+                self.events.put(("manual_export_selected", str(path)))
+            except (sc.SteamcaseError, OSError) as exc:
+                self.events.put(("manual_error", str(exc)))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _manual_apply(self):
+        if self.busy or self.running:
+            return
+        queued = any(item.get("verified_steam_id") for item in self.manual_queue)
+        if (not queued or self.queue_edit_key) and self.manual_game and self.manual_image and self.manual_verified_steam_id:
+            try:
+                item = self._selected_cover_item(require_verified_id=True)
+            except sc.SteamcaseError as exc:
+                self._manual_status(str(exc), RED)
+                return
+            item.update({"verified_steam_id": True, "game": dict(self.manual_game),
+                         "source": self.manual_source.get(), "preview_path": self.manual_preview_path})
+            self._queue_upsert(item)
+        self.confirm_and_run("apply")
+
+    def _manual_add(self):
+        if self.busy or self.running:
+            self._manual_status("Wait for the current Steam operation to finish before changing the queue.")
+            return
+        try:
+            item = self._selected_cover_item()
+        except sc.SteamcaseError as exc:
+            self._manual_status(str(exc), RED)
+            return
+        item["verified_steam_id"] = item["steam_id"] is not None and item["steam_id"] == self.manual_verified_steam_id
+        item.update({"game": dict(self.manual_game), "source": self.manual_source.get(),
+                     "preview_path": self.manual_preview_path})
+        self._queue_upsert(item)
+        self._manual_status("Added to the queue. Apply verified Steam covers together or export selected covers.")
+
+    def _manual_choose_folder(self):
+        path = filedialog.askdirectory(title="Choose cover export folder", initialdir=self.manual_folder.get())
+        if path:
+            self.manual_folder.set(path)
+            self.manual_folder_label.configure(text=path)
+
+    def _manual_export(self):
+        items = list(self.manual_queue)
+        if not items:
+            self._manual_status("Add at least one selected cover first.", RED)
+            return
+        folder = self.manual_folder.get()
+        self._manual_status("Exporting %d covers…" % len(items))
+        def work():
+            self.events.put(("manual_export", cw.export_many(items, folder)))
+        threading.Thread(target=work, daemon=True).start()
+
     # ----- step 3 -----
     def _build_step3(self, body):
         self.steam_note = tk.Label(body, text="", bg=CARD, anchor="w", justify="left", wraplength=px(620))
         self.steam_note.pack(fill="x", pady=(0, px(6)))
+        self._wrap_to_parent(body, self.steam_note)
         self._steam_note_state = None
         self.acc_row = self._row(body)
         self.acc_label = tk.Label(self.acc_row, text="", bg=CARD, fg=FG, anchor="w", wraplength=px(380), justify="left")
@@ -495,6 +1643,7 @@ class App(tk.Tk):
         self.btn_reset = RoundedButton(r2, "Reset to Steam's default art", self.start_reset, quiet=True)
         self.btn_reset.pack(side="left")
         self.step3_status = tk.Label(body, text="", bg=CARD, fg=MUTED, anchor="w", justify="left", wraplength=px(620))
+        self._wrap_to_parent(body, self.step3_status)
 
     def _tick_steam_note(self):
         """The warning follows reality: amber while Steam is open (Apply will close it), calm when it is already closed."""
@@ -632,7 +1781,14 @@ class App(tk.Tk):
 
     def refresh_step3(self):
         idle = not self.running and not self.busy
-        can_apply = idle and bool(self.cover_files)
+        count = sum(bool(item.get("verified_steam_id")) for item in self.manual_queue)
+        can_apply = idle and count > 0
+        for button in (self.btn_apply, self.btn_manual_apply):
+            caption = "Apply %d to Steam" % count if count else "Apply to Steam"
+            if button.text != caption:
+                button.text = caption
+                button.configure(width=button._font.measure(caption) + px(46))
+                button.draw()
         self.btn_make.primary = not self.cover_files
         self.btn_make.draw()
         self.btn_apply.configure(state="normal" if can_apply else "disabled")
@@ -647,9 +1803,14 @@ class App(tk.Tk):
         elif self.step3_status.cget("text") == hint and (can_apply or backup):
             self.say3("")
         self.update_steps()
+        self._manual_update_actions()
 
     def confirm_and_run(self, mode):
         if self.busy or self.running:
+            return
+        items = [dict(item) for item in self.manual_queue if item.get("verified_steam_id")] if mode == "apply" else None
+        if mode == "apply" and not items:
+            self.say3("Add a verified Steam game or shortcut to the queue first.", RED)
             return
         steam_on = self.steam_on
         try:
@@ -657,10 +1818,11 @@ class App(tk.Tk):
         except sc.SteamcaseError:
             who = "your Steam account"
         if mode == "apply":
-            title = "Add covers to Steam"
-            paras = [("%d covers will be added to the Steam account “%s”." % (len(self.cover_files), who), "main"),
-                     ("Your current artwork is backed up first. You can undo this with “Restore previous artwork”.", "muted")]
-            go = "Close Steam and add them" if steam_on else "Add them"
+            title = "Apply queued covers to Steam"
+            count = len(items)
+            paras = [("%d cover%s will be added to the Steam account “%s”." % (count, "" if count == 1 else "s", who), "main"),
+                     ("The whole queue is backed up and applied in one operation. Restore undoes it together.", "muted")]
+            go = "Close Steam and apply" if steam_on else "Apply covers"
         else:
             title = "Restore previous artwork"
             paras = [("Your artwork from before the last Apply will be put back on the Steam account “%s”." % who, "main"),
@@ -672,57 +1834,113 @@ class App(tk.Tk):
             return
         self.busy = True
         self.refresh_step3()
-        self.say3("Closing Steam…" if steam_on else "Working…", MUTED)
-        threading.Thread(target=self._step3_worker, args=(mode, self.restart_steam.get()), daemon=True).start()
+        self.say3("Preparing covers…" if items else "Working…", MUTED)
+        threading.Thread(target=self._step3_worker, args=(mode, self.restart_steam.get(), None, False, items), daemon=True).start()
 
-    def _step3_worker(self, mode, restart, names=None, everything=False):
-        say = lambda t: self.events.put(("step3_status", t))
+    def _step3_worker(self, mode, restart, names=None, everything=False, items=None):
+        say = lambda message: self.events.put(("step3_status", message))
+        closed = False
+        error = None
+        text = ""
+        detail = {}
+        stage = None
         try:
             steam = sc.steam_dir()
             acc = self._acc()
-            if sc.steam_running():
-                say("Closing Steam…")
-                if not sc.close_steam(steam):
-                    raise sc.SteamcaseError("Steam did not close in time. Close it yourself (Steam menu, then Exit) and press the button again."
-                                            + (" If macOS asked for permission, allow it first and then press the button again." if sys.platform == "darwin" else ""))
+            files = []
             if mode == "apply":
-                say("Backing up and copying covers…")
-                r = sc.apply_covers(steam, self.covers_dir, acc, files=self.cover_files)
+                if not items:
+                    raise sc.SteamcaseError("The Steam apply queue is empty.")
+                shortcuts = None
+                for item in items:
+                    if item.get("game", {}).get("source", "steam") != "steam":
+                        if shortcuts is None:
+                            shortcuts = {int(shortcut["id"]) for shortcut in cw.list_shortcuts(steam, acc)}
+                        if item["steam_id"] not in shortcuts:
+                            self.events.put(("queue_status", {item["key"]: "Failed: shortcut no longer exists"}))
+                            raise sc.SteamcaseError("The Steam shortcut for %s no longer exists. Choose it again. "
+                                                    "No Steam artwork was changed." % item["name"])
+                say("Preparing %d queued covers…" % len(items))
+                stage = tempfile.mkdtemp(prefix="casecovers-apply-", dir=cw.cache_dir())
+                for item in items:
+                    self.events.put(("queue_status", {item["key"]: "Preparing"}))
+                    try:
+                        if item.get("file"):
+                            path = cw.validate_local_image(item["file"])
+                        else:
+                            path = cw.export_one(item["image"], item["platform"], item["name"],
+                                                 stage, item["steam_id"])
+                        if int(sc.appid_of(str(path)) or 0) != item["steam_id"]:
+                            raise sc.SteamcaseError("The prepared cover ID does not match the selected Steam game.")
+                        files.append(str(path))
+                    except (sc.SteamcaseError, OSError, ValueError) as exc:
+                        self.events.put(("queue_status", {item["key"]: "Failed: %s" % exc}))
+                        raise sc.SteamcaseError("Could not prepare %s: %s. No Steam artwork was changed." %
+                                                (item["name"], exc)) from exc
+                self.events.put(("queue_status", {item["key"]: "Ready" for item in items}))
+            if sc.steam_running():
+                say("Closing Steam once…")
+                if not sc.close_steam(steam):
+                    raise sc.SteamcaseError("Steam did not close in time. Close it yourself (Steam menu, then Exit) and try again."
+                                            + (" If macOS asked for permission, allow it first." if sys.platform == "darwin" else ""))
+                closed = True
+            if mode == "apply":
+                say("Backing up and applying %d covers together…" % len(files))
+                self.events.put(("queue_status", {item["key"]: "Applying" for item in items}))
+                r = sc.apply_covers(steam, self.covers_dir, acc, files=files)
+                detail = {"backup": r["backup"], "keys": [item["key"] for item in items]}
+                changed = set(r["changed_ids"])
+                self.events.put(("queue_status", {item["key"]: "Applied" if item["steam_id"] in changed
+                                                   else "Already current" for item in items}))
                 if r["applied"]:
-                    text = "Done. %d covers added to the Steam account “%s” (%d replaced older art, %d already up to date). Backup saved in: %s" % (
+                    text = "Done. %d covers applied to the Steam account “%s” (%d replaced, %d already current). Backup: %s" % (
                         r["applied"], r["account_name"], r["replaced"], r["unchanged"], r["backup"])
                     if r["jpg_moved"]:
-                        text += " Art you had set by hand in Steam (%d games) was moved into the backup; Restore brings it back." % r["jpg_moved"]
+                        text += " %d older JPG/WebP portraits were preserved in the backup." % r["jpg_moved"]
                 else:
-                    text = "Nothing to change: all %d covers were already in the Steam account “%s”." % (r["unchanged"], r["account_name"])
+                    text = "All %d queued covers were already current in the Steam account “%s”." % (
+                        r["unchanged"], r["account_name"])
             elif mode == "reset":
                 say("Removing our covers…")
                 r = sc.reset_to_default(steam, acc, names, everything)
-                text = "Done. %d covers removed from the Steam account “%s”: Steam shows its own default art again. Press “Restore previous artwork” to bring them back." % (
+                text = "Done. %d covers removed from the Steam account “%s”. Restore brings them back." % (
                     r["removed"], r["account_name"])
             else:
                 backups = sc.list_backups(steam, acc)
                 if not backups:
                     raise sc.SteamcaseError("No backup found.")
                 n = sc.restore_backup(steam, backups[0], acc)
+                detail = {"restored": backups[0]}
                 left = len(sc.list_backups(steam, acc))
                 text = "Restored your previous artwork (%d files)." % n
                 if left:
-                    text += " %d older backup%s left: press Restore again to go one step further back." % (left, "" if left == 1 else "s")
-            if restart:
-                say("Starting Steam…")
+                    text += " %d older backup%s remain." % (left, "" if left == 1 else "s")
+            if closed and not restart:
+                text += " Start Steam to see the change."
+        except (sc.SteamcaseError, OSError, ValueError) as exc:
+            error = str(exc)
+            if mode == "apply" and items and "No Steam artwork was changed" not in error:
+                status = "Failed · restore backup" if "could not be put back" in error else "Failed · no changes applied"
+                self.events.put(("queue_status", {item["key"]: status for item in items}))
+        except Exception as exc:
+            error = "Unexpected problem: %s" % exc
+            if mode == "apply" and items:
+                self.events.put(("queue_status", {item["key"]: "Failed · check backup" for item in items}))
+        finally:
+            if closed and restart:
+                say("Starting Steam once…")
                 try:
                     sc.start_steam(steam)
-                    text += " Steam is starting."
-                except sc.SteamcaseError as e:
-                    text += " Could not start Steam (%s). Please open it yourself." % e
-            else:
-                text += " Start Steam to see the change."
-            self.events.put(("step3_done", text, mode))
-        except sc.SteamcaseError as e:
-            self.events.put(("step3_error", str(e)))
-        except Exception as e:
-            self.events.put(("step3_error", "Unexpected problem: %s" % e))
+                    if not error:
+                        text += " Steam is starting."
+                except sc.SteamcaseError as exc:
+                    note = "Steam could not restart (%s). Open it manually." % exc
+                    error = "%s %s" % (error, note) if error else None
+                    if error is None:
+                        text += " " + note
+            if stage:
+                shutil.rmtree(stage, ignore_errors=True)
+            self.events.put(("step3_error", error) if error else ("step3_done", text, mode, detail))
 
 
 def restore_child_env():
@@ -747,12 +1965,19 @@ def enable_dpi_awareness():
 
 
 def selftest():
-    """Headless check used by the build: Pillow, tkinter and the bundled frame all work. Exit code 0 = fine."""
+    """Headless check used by the build: Pillow, Tk and bundled platform frames work."""
     import tempfile
     from PIL import Image
     try:
         assert os.path.exists(sc.FRAME), "frame image missing: %s" % sc.FRAME
         assert os.path.exists(os.path.join(sc.HERE, "assets", "icon.png")), "icon missing"
+        platforms = load_catalog()["platforms"]
+        assert len(platforms) == 29, "expected 29 platform configurations"
+        for platform in platforms:
+            assert os.path.isfile(os.path.join(sc.HERE, "assets", "frames", platform["id"] + ".png")), \
+                "platform frame missing: %s" % platform["id"]
+        if sys.platform.startswith("win"):
+            cw.load_api_key()  # also checks that the packaged Windows credential backend loads
         restore_child_env()
         assert sc._ssl_context().cert_store_stats()["x509_ca"] > 0, "no trusted certificates loaded: secure connections to Steam would fail"
         if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
@@ -775,7 +2000,7 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:
         sys.exit(selftest())
     if "--version" in sys.argv:
-        print("steam-case-covers %s" % sc.APP_VERSION)
+        print("Case Covers %s" % sc.APP_VERSION)
         sys.exit(0)
     if "--check-network" in sys.argv:                     # for bug reports: does this computer reach Steam?
         ok, msg = sc.check_network()

@@ -298,6 +298,7 @@ class Card(tk.Canvas):
 
     def __init__(self, parent, bg=BG):
         super().__init__(parent, bg=bg, highlightthickness=0, width=px(700), height=px(120))
+        self.min_height = 0
         self.body = tk.Frame(self, bg=CARD)
         self._win = self.create_window(px(22), px(18), window=self.body, anchor="nw")
         self.bind("<Configure>", self._relayout)
@@ -307,7 +308,7 @@ class Card(tk.Canvas):
         w = self.winfo_width()
         if w < 10:
             return
-        h = self.body.winfo_reqheight() + px(36)
+        h = max(self.body.winfo_reqheight() + px(36), self.min_height)
         if int(super().cget("height")) != h:
             super().configure(height=h)
         self.itemconfigure(self._win, width=w - px(44))
@@ -358,6 +359,13 @@ class ScrollFrame(tk.Frame):
             self.canvas.yview_scroll(units, "units")
 
     def _wheel(self, e):
+        widget = e.widget
+        while widget is not None:
+            if isinstance(widget, ScrollFrame):
+                if widget is not self:
+                    return
+                break
+            widget = widget.master
         self._scroll(-1 if e.delta > 0 else 1)
 
     def _focus(self, e):

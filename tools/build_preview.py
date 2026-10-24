@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = os.path.join(HERE, "src", "fonts", "NunitoSans.ttf")
 DEFAULT_IDS = ["1465360", "1158160", "1903340", "377160", "1604030"]
 W, H = 1280, 640
-TITLE = "Steam Case Covers"
+TITLE = "Case Covers"
 
 
 def font(size, weight):

@@ -1,5 +1,12 @@
 .venv/
 __pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+*.log
+*.tmp
 covers/
 grid_backup*/
 userdata*.json
@@ -7,4 +14,7 @@ userdata*.json
 .env
 build/
 dist/
+build-qt-*/
+dist-qt-*/
+visual-check/
 assets/version.txt

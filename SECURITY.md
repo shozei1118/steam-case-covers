@@ -9,5 +9,5 @@ Release files are built by GitHub Actions from the tagged source. Each release l
 Each release file also carries signed build provenance: a certificate, signed by GitHub, saying which commit of this repository built that exact file. To check a download (needs the GitHub CLI):
 
 ```bash
-gh attestation verify SteamCaseCovers-linux --repo diegobergonsi/steam-case-covers
+gh attestation verify CaseCovers-linux --repo diegobergonsi/steam-case-covers
 ```

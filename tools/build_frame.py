@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Diego Bergonsi. Part of steam-case-covers: https://github.com/diegobergonsi/steam-case-covers
-"""Maintainers only: render assets/frame.png (600x900, transparent art window) from SVG.
-Needs rsvg-convert (librsvg). Users of steamcase.py do NOT need this: frame.png is committed."""
-import os, re, base64, subprocess, tempfile
+"""Maintainers only: render 600x900 transparent frame PNGs from SVG.
+
+The build uses resvg_py and Pillow. Runtime users need neither renderer because
+the PNGs are committed.
+"""
+import io, os, re
+from functools import lru_cache
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "src")
@@ -14,10 +18,15 @@ L, R, T, B = 14, 586, 14, 872   # art+banner box
 BAR = 78
 AT = T + BAR + 4                # art window top  (window = L..R x AT..B)
 
-svg_logo = open(os.path.join(SRC, "steam_logo.svg")).read()
+svg_logo = open(os.path.join(SRC, "steam_logo.svg"), encoding="utf-8").read()
 DISC, MARK = re.findall(r'<path d="([^"]+)"', svg_logo)[:2]
-TUX = base64.b64encode(open(os.path.join(SRC, "tux.svg"), "rb").read()).decode()
+FONT = os.path.join(SRC, "fonts", "NunitoSans.ttf")
 cy = T + BAR / 2
+STEAM_MARKUP = (f'<g transform="translate(196,{cy-24}) scale({48/32})"><path d="{DISC}" fill="#fff"/>'
+                f'<path d="{MARK}" fill="#0a2a66"/></g>\n'
+                f' <text x="252" y="{cy+13}" font-family="Nunito Sans, sans-serif" font-weight="bold" '
+                'font-size="40" letter-spacing="4" fill="#fff" stroke="#fff" stroke-width="1.8" '
+                'stroke-linejoin="round">STEAM</text>')
 
 svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <defs>
@@ -29,7 +38,6 @@ svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewB
  <mask id="hole"><rect width="{W}" height="{H}" fill="#fff"/><rect x="{L}" y="{AT}" width="{R-L}" height="{B-AT}" fill="#000"/></mask>
  <pattern id="dots" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2.4" fill="#5d8fd6" opacity=".55"/></pattern>
  <clipPath id="ban"><rect x="{L}" y="{T}" width="{R-L}" height="{BAR}" rx="4"/></clipPath>
- <filter id="white"><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/></filter>
 </defs>
 <g mask="url(#hole)">
  <rect x="0" y="0" width="{W}" height="{H}" rx="20" fill="url(#case)"/>
@@ -43,20 +51,92 @@ svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewB
  </g>
  <rect x="{L}" y="{T+BAR}" width="{R-L}" height="4" fill="#2e86e6"/>
  <rect x="{L}" y="{T+BAR}" width="{R-L}" height="1.2" fill="#7fc0ff" opacity=".8"/>
- <g transform="translate(196,{cy-24}) scale({48/32})"><path d="{DISC}" fill="#fff"/><path d="{MARK}" fill="#0a2a66"/></g>
- <text x="252" y="{cy+13}" font-family="Nunito Sans, sans-serif" font-weight="bold" font-size="40" letter-spacing="4" fill="#fff" stroke="#fff" stroke-width="1.8" stroke-linejoin="round">STEAM</text>
- <image href="data:image/svg+xml;base64,{TUX}" x="484" y="{cy-27}" width="28" height="28" filter="url(#white)"/>
- <text x="498" y="{cy+19}" text-anchor="middle" font-family="Nunito Sans, sans-serif" font-size="12" fill="#cfe0ff">Linux</text>
- <g fill="#fff" transform="translate(541,{cy-22})"><rect width="11" height="11"/><rect x="13" width="11" height="11"/><rect y="13" width="11" height="11"/><rect x="13" y="13" width="11" height="11"/></g>
- <text x="553" y="{cy+19}" text-anchor="middle" font-family="Nunito Sans, sans-serif" font-size="12" fill="#cfe0ff">Windows</text>
+ {STEAM_MARKUP}
 </g>
 <!-- gloss over everything, art window included -->
 <rect x="0" y="0" width="{W}" height="{H}" rx="20" fill="url(#gloss)"/>
 </svg>'''
 
-with tempfile.TemporaryDirectory() as tmp:
-    p = os.path.join(tmp, "frame.svg"); open(p, "w").write(svg)
-    conf = os.path.join(tmp, "fc.conf")
-    open(conf, "w").write(f'<?xml version="1.0"?><fontconfig><include ignore_missing="yes">/etc/fonts/fonts.conf</include><dir>{SRC}/fonts</dir></fontconfig>')
-    subprocess.run(["rsvg-convert", "-w", str(W), "-h", str(H), "-o", OUT, p], check=True, env={**os.environ, "FONTCONFIG_FILE": conf}, stderr=subprocess.DEVNULL)
-print("wrote", os.path.normpath(OUT), "| art window:", (L, AT, R, B))
+ORIGINAL_COLORS = {
+    "case_top": "#2f5fe8", "case_mid": "#1636c8", "case_bottom": "#0a1e90",
+    "bar_top": "#0d3a82", "bar_bottom": "#051c4d", "dots": "#5d8fd6",
+    "edge": "#8fb2ff", "separator": "#2e86e6", "separator_high": "#7fc0ff",
+    "lip_base": "#0b2bb5", "lip_high": "#4d7cf2", "lip_shadow": "#061a78",
+}
+
+
+def platform_svg(palette):
+    """Keep the original case geometry and gloss; exchange only its palette and header logo."""
+    result = svg.replace(STEAM_MARKUP, "")
+    for key, original in ORIGINAL_COLORS.items():
+        result = result.replace(original, palette[key])
+    return result
+
+
+@lru_cache(maxsize=1)
+def steam_logo_bounds():
+    """Visible bounds of the original Steam icon and wordmark rendered together."""
+    from PIL import Image
+    import resvg_py
+
+    markup = ('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900">'
+              + STEAM_MARKUP + '</svg>')
+    image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(
+        svg_string=markup, width=W, height=H, font_files=[FONT]))).convert("RGBA")
+    bounds = image.getbbox()
+    if bounds is None:
+        raise ValueError("Steam reference logo has no visible pixels")
+    return bounds
+
+
+def fitted_logo_size(visible_size, correction=1.0):
+    """Fit visible SVG art within the Steam mark, without enlarging source pixels."""
+    if not 0 < correction <= 1:
+        raise ValueError("logo correction must be in (0, 1]")
+    left, top, right, bottom = steam_logo_bounds()
+    reference_w, reference_h = right - left, bottom - top
+    width, height = visible_size
+    if width < 1 or height < 1:
+        raise ValueError("SVG logo has no visible pixels")
+    scale = min(1.0, reference_w / width, reference_h / height) * correction
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
+def render_platform_frame(palette, logo_path, output, logo_box=(38, 20, 562, 84), logo_scale=1.0):
+    """Render a transparent PNG using visible SVG bounds and Steam-sized logo caps."""
+    from PIL import Image
+    import resvg_py
+
+    frame = Image.open(io.BytesIO(resvg_py.svg_to_bytes(
+        svg_string=platform_svg(palette), width=W, height=H, font_files=[FONT]))).convert("RGBA")
+    if logo_path:
+        with open(logo_path, encoding="utf-8-sig") as source:
+            logo = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=source.read()))).convert("RGBA")
+        bounds = logo.getbbox()
+        if bounds is None:
+            raise ValueError("SVG logo has no visible pixels: " + logo_path)
+        logo = logo.crop(bounds)
+        left, top, right, bottom = logo_box
+        size = fitted_logo_size(logo.size, logo_scale)
+        if size[0] > right - left or size[1] > bottom - top:
+            raise ValueError("Steam reference logo does not fit into the platform header")
+        logo = logo.resize(size, Image.Resampling.LANCZOS)
+        x = (left + right - logo.width) // 2
+        y = (top + bottom - logo.height) // 2
+        frame.alpha_composite(logo, (x, y))
+    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
+    frame.save(output)
+
+
+def render_original_frame():
+    from PIL import Image
+    import resvg_py
+
+    frame = Image.open(io.BytesIO(resvg_py.svg_to_bytes(
+        svg_string=svg, width=W, height=H, font_files=[FONT]))).convert("RGBA")
+    frame.save(OUT)
+    print("wrote", os.path.normpath(OUT), "| art window:", (L, AT, R, B))
+
+
+if __name__ == "__main__":
+    render_original_frame()
