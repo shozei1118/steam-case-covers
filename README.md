@@ -12,7 +12,7 @@
 ![Linux](https://img.shields.io/badge/Linux-Steam%20Deck-577bce?style=flat-square&logo=steamdeck&logoColor=e8eaf0)
 ![Python](https://img.shields.io/badge/Python-3.12-577bce?style=flat-square&logo=python&logoColor=e8eaf0)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
-![Version](https://img.shields.io/badge/version-1.2.0-83c7ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.1-83c7ee?style=flat-square)
 
 [**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 
@@ -55,7 +55,7 @@ Download the file for your system from the [latest release](../../releases/lates
 > [!NOTE]
 > The builds are not code-signed. On Windows, SmartScreen may warn on first launch: **More info → Run anyway**. On macOS, run `xattr -dr com.apple.quarantine ~/Downloads/CaseCovers.app` in Terminal before opening the app. Step-by-step help is in the [detailed notes](docs/DETAILS.md#installation-help).
 
-Every release has a `SHA256SUMS` file and signed build provenance, so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
+Every release has a `SHA256SUMS` file, so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
 
 ### From source
 
@@ -148,7 +148,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_windows.ps1 -Ins
 
 ### Releases
 
-Pushing a `vX.Y.Z` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It tests and builds Windows, macOS and Linux, smoke-tests the Windows installer, and publishes everything with checksums and signed provenance on the Releases page. GitHub Releases are the only distribution channel.
+Pushing a `vX.Y.Z` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It tests and builds Windows, macOS and Linux, smoke-tests the Windows installer, and publishes everything with checksums on the Releases page (signed build provenance is added once the repository is public). GitHub Releases are the only distribution channel.
 
 ### Project layout
 
@@ -170,6 +170,10 @@ tests/                 Unit, GUI and fuzz tests
 Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Frame architecture: [docs/stages-1-to-3.md](docs/stages-1-to-3.md). Search and export: [docs/manual-workflow.md](docs/manual-workflow.md).
 
 ## Changelog
+
+### 1.2.1
+
+- The release workflow also works while the repository is private.
 
 ### 1.2.0
 

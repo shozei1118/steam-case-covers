@@ -4,6 +4,9 @@ All notable changes. Versions follow [Semantic Versioning](https://semver.org); 
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-24
+- Release workflow: skip signed build provenance while the repository is private, so the release files are published. No app changes since 1.2.0.
+
 ## [1.2.0] - 2026-10-24
 - Fixed: Apply in the Tkinter fallback failed on a fresh install because the artwork cache folder did not exist yet.
 - Security: Pillow 13.0.0 and certifi 2026.10.19 (known vulnerabilities in the previous pins). Running from source now needs Python 3.11 or newer.
