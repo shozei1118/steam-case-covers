@@ -14,7 +14,7 @@ Covers are built on your machine from the artwork Steam itself serves for your g
 
 The functions below are the engine. The CLI at the bottom and gui.py both use them.
 """
-import argparse, filecmp, json, os, re, shutil, socket, ssl, subprocess, sys, time, urllib.error, urllib.parse, urllib.request, uuid
+import argparse, filecmp, hashlib, json, os, re, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request, uuid
 
 try:
     from PIL import Image
@@ -176,7 +176,6 @@ def http_get(url, tries=3):
             time.sleep(1.5 * (i + 1))
 
 
-REPO = "diegobergonsi/steam-case-covers"
 _TAG = re.compile(r"^v([0-9]{1,4})\.([0-9]{1,4})\.([0-9]{1,4})$")
 
 
@@ -193,38 +192,6 @@ def _read_version():
 APP_VERSION = _read_version()
 
 
-def version_tuple(tag):
-    m = _TAG.match(tag) if isinstance(tag, str) else None
-    return tuple(int(x) for x in m.groups()) if m else None
-
-
-def check_for_update(current=None):
-    """Ask GitHub for the newest published release (pre-releases count). Returns
-    {"current", "latest", "newer", "url"}; "newer" is None when this build carries no version number (run from source).
-    The page address is built here from a tag that matched a strict pattern, never taken from the server's answer.
-    Nothing is downloaded or installed. Raises SteamcaseError when GitHub cannot be reached or answers nonsense."""
-    current = APP_VERSION if current is None else current
-    try:
-        data = json.loads(http_get("https://api.github.com/repos/%s/releases?per_page=30" % REPO, tries=2).decode("utf-8", "replace"))
-    except SteamcaseError:
-        raise
-    except (ValueError, RecursionError, MemoryError, UnicodeError):
-        raise SteamcaseError("GitHub's answer was not understood. Try again later.")
-    except Exception as e:
-        raise SteamcaseError("Could not reach GitHub: %s" % explain_error(e))
-    best = None
-    for r in data if isinstance(data, list) else []:
-        tag = r.get("tag_name") if isinstance(r, dict) and not r.get("draft") else None
-        v = version_tuple(tag)
-        if v and (best is None or v > best[0]):
-            best = (v, tag)
-    if not best:
-        raise SteamcaseError("No releases found on GitHub.")
-    mine = version_tuple(current)
-    return {"current": current, "latest": best[1], "newer": None if mine is None else best[0] > mine,
-            "url": "https://github.com/%s/releases/tag/%s" % (REPO, best[1])}
-
-
 def _tmp(path, tag="tmp"):
     """A temp file name next to `path` that no other run can share."""
     return "%s.%d.%s.%s" % (path, os.getpid(), uuid.uuid4().hex[:8], tag)
@@ -235,7 +202,8 @@ def slug(name):
 
 
 def read_text(path):
-    return open(path, encoding="utf-8-sig", errors="replace").read()
+    with open(path, encoding="utf-8-sig", errors="replace") as stream:
+        return stream.read()
 
 
 def vdf_values(text, key):
@@ -297,7 +265,11 @@ def library_paths(steam):
     paths = [steam]
     vdf = os.path.join(steam, "steamapps", "libraryfolders.vdf")
     if os.path.exists(vdf):
-        for p in vdf_values(read_text(vdf), "path"):
+        try:
+            folders = vdf_values(read_text(vdf), "path")
+        except OSError:
+            folders = []
+        for p in folders:
             p = p.replace("\\\\", "\\")
             if os.path.isdir(p) and os.path.realpath(p) not in [os.path.realpath(x) for x in paths]:
                 paths.append(p)
@@ -310,12 +282,19 @@ def installed_games(steam):
         apps = os.path.join(lib, "steamapps")
         if not os.path.isdir(apps):
             continue
-        for fn in os.listdir(apps):
-            if not (fn.startswith("appmanifest_") and fn.endswith(".acf")):
+        try:
+            manifests = os.listdir(apps)
+        except OSError:
+            continue
+        for fn in manifests:
+            if not re.fullmatch(r"appmanifest_([0-9]{1,10})\.acf", fn):
                 continue
-            t = read_text(os.path.join(apps, fn))
+            try:
+                t = read_text(os.path.join(apps, fn))
+            except OSError:
+                continue
             i, n = vdf_values(t, "appid"), vdf_values(t, "name")
-            if i and n and not TOOL_NAMES.match(n[0]):
+            if i and n and i[0] == fn[12:-4] and 0 < int(i[0]) < 2 ** 32 and not TOOL_NAMES.match(n[0]):
                 games[int(i[0])] = n[0]
     return games
 
@@ -325,7 +304,8 @@ def owned_ids(json_path):
     try:
         if os.path.getsize(path) > MAX_LIBRARY_FILE:
             raise SteamcaseError("That file is far too big to be your game list (over %d MB)." % (MAX_LIBRARY_FILE >> 20))
-        d = json.load(open(path, encoding="utf-8-sig"))
+        with open(path, encoding="utf-8-sig") as stream:
+            d = json.load(stream)
     except SteamcaseError:
         raise
     except (OSError, ValueError, RecursionError, MemoryError, UnicodeError) as e:
@@ -407,10 +387,16 @@ def grid_dir(steam, user=None):
 
 
 # ---------- Steam process ----------
+def _background_creationflags():
+    """Keep Windows console tools from opening a window when called by the GUI."""
+    return subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+
+
 def steam_running():
     try:
         if sys.platform.startswith("win"):
-            out = subprocess.run([_tool("tasklist")], capture_output=True, text=True).stdout.lower()
+            out = subprocess.run([_tool("tasklist")], capture_output=True, text=True,
+                                 creationflags=_background_creationflags()).stdout.lower()
             return "steam.exe" in out
         out = subprocess.run([_tool("ps"), "-A", "-o", "comm="], capture_output=True, text=True).stdout.lower()
         # Linux prints just the name ("steam"); macOS prints the whole path (".../Steam.app/Contents/MacOS/steam_osx")
@@ -455,11 +441,14 @@ def close_steam(steam, timeout=60):
         if sys.platform == "darwin":
             exe = _mac_steam_binary()
             if exe:                                                  # Steam's own "-shutdown" (works without any permission prompt)
-                subprocess.Popen([exe, "-shutdown"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen([exe, "-shutdown"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 creationflags=_background_creationflags())
             else:
-                subprocess.Popen([_tool("osascript"), "-e", 'quit app "Steam"'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen([_tool("osascript"), "-e", 'quit app "Steam"'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 creationflags=_background_creationflags())
         elif cmd:
-            subprocess.Popen(cmd + ["-shutdown"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(cmd + ["-shutdown"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             creationflags=_background_creationflags())
         else:
             raise SteamcaseError("Could not work out how to close Steam. Please close it yourself.")
     except OSError as e:
@@ -479,7 +468,8 @@ def start_steam(steam):
         raise SteamcaseError("Could not work out how to start Steam. Please start it yourself.")
     try:
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-                         start_new_session=not sys.platform.startswith("win"))
+                         start_new_session=not sys.platform.startswith("win"),
+                         creationflags=_background_creationflags())
     except OSError as e:
         raise SteamcaseError("Could not start Steam: %s" % e)
 
@@ -501,8 +491,19 @@ def store_items(appids, log=None, cancelled=None, errors=None):
             if log:
                 log("store lookup failed for a chunk: %s" % e)
             continue
-        for appid, it in zip(chunk, items):
-            out[appid] = it
+        requested = set(chunk)
+        if len(items) == len(chunk) and all(isinstance(it, dict) and "appid" not in it for it in items):
+            out.update(zip(chunk, items))
+            continue
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            try:
+                appid = int(it.get("appid"))
+            except (TypeError, ValueError):
+                continue
+            if appid in requested:
+                out[appid] = it
     return out
 
 
@@ -519,13 +520,15 @@ def portrait_candidates(appid, item):
     return urls, auto
 
 
-def list_games(games, log=None):
+def list_games(games, log=None, include_unknown=False):
     """[(appid, name)] of real games only (no DLC, tools or unnamed leftovers)."""
     info = store_items(sorted(games), log)
     out = []
     for appid in sorted(games):
         it = info.get(appid, {})
         name = games[appid] or it.get("name")
+        if not name and include_unknown:
+            name = "Steam app %s" % appid
         if it.get("type", 0) not in (0, None) or not name or TOOL_NAMES.match(name):
             continue
         out.append((appid, name))
@@ -549,8 +552,21 @@ def build_cover(portrait_path, out_path, frame):
     canvas = Image.new("RGBA", SIZE, (0, 0, 0, 0))
     canvas.paste(art, (x0, y0))
     part = _tmp(out_path, "part")                  # write aside, then rename: a crash never leaves a half-written cover
-    Image.alpha_composite(canvas, frame).save(part, format="PNG", optimize=True)
-    os.replace(part, out_path)
+    try:
+        Image.alpha_composite(canvas, frame).save(part, format="PNG", optimize=True)
+        for attempt in range(6):
+            try:
+                os.replace(part, out_path)
+                break
+            except PermissionError as exc:
+                # On Windows another reader can briefly hold the destination open.
+                # Keep the atomic replacement, but wait for that sharing lock to pass.
+                if not sys.platform.startswith("win") or getattr(exc, "winerror", None) not in (5, 32, 33) or attempt == 5:
+                    raise
+                time.sleep(0.04 * (attempt + 1))
+    finally:
+        if os.path.exists(part):
+            os.remove(part)
 
 
 # ---------- make ----------
@@ -710,7 +726,8 @@ def apply_covers(steam, covers_dir, user=None, files=None):
                 added.append(n)
             work.append((f, n))
         if not work:
-            return dict(info, applied=0, unchanged=len(covers), replaced=0, jpg_moved=0, backup=None)
+            return dict(info, applied=0, unchanged=len(covers), replaced=0, jpg_moved=0, backup=None,
+                        changed_ids=[], unchanged_ids=[int(appid_of(f)) for f in covers])
         base = os.path.join(os.path.dirname(grid), BACKUP_PREFIX + time.strftime("%Y%m%d_%H%M%S"))
         backup, k = base, 1
         while True:
@@ -738,7 +755,10 @@ def apply_covers(steam, covers_dir, user=None, files=None):
                                      "It is safe in the backup folder %s (use Restore, or copy the files back by hand)." % (e, backup))
             shutil.rmtree(backup, ignore_errors=True)                           # a failed run must not leave a backup behind
             raise SteamcaseError("Could not write to Steam's artwork folder (%s). Nothing was changed." % e)
-        return dict(info, applied=len(work), unchanged=len(covers) - len(work), replaced=len(replaced), jpg_moved=len(moved), backup=backup)
+        changed = {int(n.split("p.", 1)[0]) for _, n in work}
+        return dict(info, applied=len(work), unchanged=len(covers) - len(work), replaced=len(replaced),
+                    jpg_moved=len(moved), backup=backup, changed_ids=sorted(changed),
+                    unchanged_ids=[int(appid_of(f)) for f in covers if int(appid_of(f)) not in changed])
 
 
 class _Lock:
@@ -768,6 +788,13 @@ class _Lock:
 
 
 _frame_ref = None
+# Header and lower-lip hashes from the last shipped frame with Windows/Linux
+# badges. This lets reset recognize earlier covers without rendering those badges
+# in any current platform frame.
+_LEGACY_FRAME_REGION_HASHES = (
+    "77b13681ffdc772b7acfdc7a588c45b717192d77884c02628dfc1acc44fd8a0f",
+    "eedccaa8b8713061b49087facd6e18f05d68785a504a9be0f33420b22366e569",
+)
 
 
 def _frame_regions():
@@ -780,9 +807,30 @@ def _frame_regions():
     return _frame_ref
 
 
+def _known_frame_hashes():
+    """Exact header/lip signatures for every shipped normal and platinum frame."""
+    global _known_frame_ref
+    if _known_frame_ref is None:
+        from platform_catalog import load_catalog
+        from platinum_frame import apply
+        top, bot, _ref_top, _ref_bot = _frame_regions()
+        found = {_LEGACY_FRAME_REGION_HASHES}
+        for platform in load_catalog()["platforms"]:
+            path = os.path.join(HERE, "assets", "frames", platform["id"] + ".png")
+            with Image.open(path) as source:
+                frame = source.convert("RGBA")
+            for version in (frame, apply(frame)):
+                found.add((hashlib.sha256(version.crop(top).tobytes()).hexdigest(),
+                           hashlib.sha256(version.crop(bot).tobytes()).hexdigest()))
+        _known_frame_ref = found
+    return _known_frame_ref
+
+
+_known_frame_ref = None
+
+
 def is_steamcase_cover(path):
-    """True if this file is one of our covers: a 600x900 PNG whose banner and bottom edge match frame.png exactly.
-    Art you set yourself never matches, so it is never mistaken for ours."""
+    """Recognize current and legacy Steam covers by their exact frame regions."""
     try:
         if Image is None or os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) > MAX_DOWNLOAD:
             return False
@@ -791,7 +839,11 @@ def is_steamcase_cover(path):
             if im.size != SIZE:
                 return False
             im = im.convert("RGBA")
-        return im.crop(top).tobytes() == ref_top and im.crop(bot).tobytes() == ref_bot
+        candidate_top, candidate_bot = im.crop(top).tobytes(), im.crop(bot).tobytes()
+        if candidate_top == ref_top and candidate_bot == ref_bot:
+            return True
+        return (hashlib.sha256(candidate_top).hexdigest(),
+                hashlib.sha256(candidate_bot).hexdigest()) in _known_frame_hashes()
     except Exception:
         return False
 
@@ -875,6 +927,254 @@ def list_backups(steam, user=None):
     return [os.path.join(cfg, d) for d in sorted(os.listdir(cfg), reverse=True) if d.startswith(BACKUP_PREFIX)]
 
 
+def _portrait_name(name):
+    return bool(_COVER_NAME.fullmatch(name) or _JPG_NAME.fullmatch(name))
+
+
+def _portrait_files(grid):
+    return sorted(n for n in os.listdir(grid) if _portrait_name(n)) if os.path.isdir(grid) else []
+
+
+def _artwork_digest(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for part in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(part)
+    return digest.hexdigest()
+
+
+def _check_artwork_file(path):
+    if not _is_plain_file(path):
+        raise SteamcaseError("Artwork file is missing or is a link: %s" % os.path.basename(path))
+    size = os.path.getsize(path)
+    if not 0 < size <= MAX_DOWNLOAD:
+        raise SteamcaseError("Artwork file has an unsupported size: %s" % os.path.basename(path))
+    if Image is None:
+        raise SteamcaseError("Pillow is required to validate artwork images.")
+    try:
+        with Image.open(path, formats=["PNG", "JPEG", "WEBP"]) as image:
+            if image.width * image.height > MAX_PIXELS:
+                raise SteamcaseError("Artwork image is too large: %s" % os.path.basename(path))
+            image.verify()
+    except (OSError, ValueError) as exc:
+        raise SteamcaseError("Artwork image cannot be read: %s" % os.path.basename(path)) from exc
+    return size, _artwork_digest(path)
+
+
+def export_artwork_backup(steam, destination, user=None, progress=None, shortcut_ids=()):
+    """Export every locally stored portrait override, regardless of who created it.
+
+    Steam's CDN defaults are absent from config/grid and therefore never counted.
+    The destination is a new directory containing original filenames and manifest.json.
+    """
+    grid = grid_dir(steam, user)
+    account = os.path.basename(os.path.dirname(os.path.dirname(grid)))
+    destination = os.path.abspath(destination)
+    if os.path.lexists(destination):
+        raise SteamcaseError("The backup folder already exists. Choose a new name.")
+    parent = os.path.dirname(destination)
+    if not os.path.isdir(parent):
+        raise SteamcaseError("The backup destination's parent folder does not exist.")
+    temporary = tempfile.mkdtemp(prefix=".casecovers-export-", dir=parent)
+    entries, skipped = [], []
+    try:
+        names = _portrait_files(grid)
+        for index, name in enumerate(names, 1):
+            source = os.path.join(grid, name)
+            try:
+                ident = int(name.split("p.", 1)[0])
+                if not 0 < ident < 2 ** 32:
+                    raise SteamcaseError("Artwork ID is outside Steam's supported range")
+                _check_artwork_file(source)
+                copied = os.path.join(temporary, name)
+                shutil.copy2(source, copied)
+                size, digest = _check_artwork_file(copied)
+                entries.append({"id": ident, "filename": name,
+                                "kind": "shortcut" if ident in shortcut_ids else "steam_or_unknown",
+                                "size": size, "sha256": digest})
+            except (OSError, SteamcaseError) as exc:
+                copied = os.path.join(temporary, name)
+                if os.path.lexists(copied):
+                    os.remove(copied)
+                skipped.append({"filename": name, "reason": str(exc)})
+            if progress:
+                progress(index, len(names), "Exporting local artwork")
+        if not entries:
+            detail = (" Skipped: " + "; ".join("%s: %s" % (item["filename"], item["reason"])
+                                               for item in skipped[:3])) if skipped else ""
+            raise SteamcaseError("No valid locally stored portrait artwork was found for this account. Steam CDN defaults cannot be exported." + detail)
+        manifest = {"format": "case-covers-artwork", "version": 1, "account": account,
+                    "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "files": entries,
+                    "skipped": skipped}
+        with open(os.path.join(temporary, "manifest.json"), "w", encoding="utf-8") as stream:
+            json.dump(manifest, stream, indent=2, ensure_ascii=False)
+        os.replace(temporary, destination)
+        return {"path": destination, "account": account, "exported": len(entries),
+                "skipped": skipped, "bytes": sum(item["size"] for item in entries)}
+    finally:
+        if os.path.isdir(temporary):
+            shutil.rmtree(temporary, ignore_errors=True)
+
+
+def inspect_artwork_backup(steam, backup_dir, user=None, shortcut_ids=None):
+    """Validate a portable backup and preview every overwrite before import."""
+    backup_dir = os.path.abspath(backup_dir)
+    manifest_path = os.path.join(backup_dir, "manifest.json")
+    if not _is_plain_file(manifest_path) or os.path.getsize(manifest_path) > 2 * 1024 * 1024:
+        raise SteamcaseError("Choose a Case Covers artwork backup folder containing manifest.json.")
+    try:
+        with open(manifest_path, encoding="utf-8") as stream:
+            manifest = json.load(stream)
+        entries = manifest["files"]
+        if (manifest.get("format") != "case-covers-artwork" or manifest.get("version") != 1 or
+                not isinstance(entries, list) or not 0 < len(entries) <= MAX_APPS or
+                not re.fullmatch(r"[0-9]+", str(manifest.get("account", "")))):
+            raise ValueError("unsupported manifest")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError) as exc:
+        raise SteamcaseError("The artwork backup manifest is damaged or unsupported.") from exc
+    grid = grid_dir(steam, user)
+    target_account = os.path.basename(os.path.dirname(os.path.dirname(grid)))
+    current = _portrait_files(grid)
+    current_by_id = {}
+    for name in current:
+        current_by_id.setdefault(int(name.split("p.", 1)[0]), []).append(name)
+    rows, seen, issues = [], set(), []
+    for entry in entries:
+        try:
+            name, ident, size, expected_hash = (entry["filename"], entry["id"],
+                                                entry["size"], entry["sha256"])
+            kind = entry.get("kind", "steam_or_unknown")
+            if (not isinstance(name, str) or not _portrait_name(name) or name in seen or
+                    type(ident) is not int or not 0 < ident < 2 ** 32 or
+                    int(name.split("p.", 1)[0]) != ident or type(size) is not int or
+                    not 0 < size <= MAX_DOWNLOAD or not isinstance(expected_hash, str) or
+                    not re.fullmatch(r"[0-9a-f]{64}", expected_hash) or
+                    kind not in ("shortcut", "steam_or_unknown")):
+                raise ValueError("bad entry")
+        except (TypeError, KeyError, ValueError, AttributeError) as exc:
+            raise SteamcaseError("The artwork backup manifest contains an invalid file entry.") from exc
+        seen.add(name)
+        if (kind == "shortcut" or ident >= 2 ** 31) and shortcut_ids is not None and ident not in shortcut_ids:
+            issues.append("%s: non-Steam shortcut ID is not present in this account" % name)
+        source = os.path.join(backup_dir, name)
+        try:
+            actual_size, actual_hash = _check_artwork_file(source)
+            if actual_size != size or actual_hash != expected_hash:
+                raise SteamcaseError("Size or checksum does not match the manifest")
+            if os.path.lexists(os.path.join(grid, name)):
+                if not _is_plain_file(os.path.join(grid, name)):
+                    raise SteamcaseError("Target artwork is a link or special file")
+                status = "Identical" if _artwork_digest(os.path.join(grid, name)) == expected_hash else "Overwrite"
+            else:
+                status = "New"
+        except (OSError, SteamcaseError) as exc:
+            status = "Invalid: %s" % exc
+            issues.append("%s: %s" % (name, exc))
+        rows.append({"id": ident, "filename": name, "kind": kind, "size": size,
+                     "sha256": expected_hash, "status": status,
+                     "path": source if status in ("New", "Overwrite", "Identical") else None})
+    imported_ids = {row["id"] for row in rows}
+    removals = sorted(name for ident in imported_ids for name in current_by_id.get(ident, []) if name not in seen)
+    removal_rows = [{"id": int(name.split("p.", 1)[0]), "filename": name,
+                     "path": os.path.join(grid, name)} for name in removals]
+    for name in removals:
+        if not _is_plain_file(os.path.join(grid, name)):
+            issues.append("%s: target artwork is a link or special file" % name)
+    current_state = []
+    for name in sorted(name for ident in imported_ids for name in current_by_id.get(ident, [])):
+        path = os.path.join(grid, name)
+        current_state.append((name, _artwork_digest(path) if _is_plain_file(path) else "not-regular"))
+    token_data = {"entries": [(row["filename"], row["kind"], row["size"], row["sha256"], row["status"])
+                              for row in rows],
+                  "current": current_state, "removals": removals, "account": target_account}
+    token = hashlib.sha256(json.dumps(token_data, sort_keys=True).encode("utf-8")).hexdigest()
+    return {"path": backup_dir, "source_account": manifest["account"], "target_account": target_account,
+            "rows": rows, "removals": removals, "removal_rows": removal_rows,
+            "issues": issues, "token": token,
+            "new": sum(row["status"] == "New" for row in rows),
+            "overwrite": sum(row["status"] == "Overwrite" for row in rows),
+            "identical": sum(row["status"] == "Identical" for row in rows),
+            "can_import": not issues}
+
+
+def import_artwork_backup(steam, backup_dir, user=None, expected=None, progress=None, shortcut_ids=None):
+    """Restore a portable backup with a pre-change undo backup and rollback on failure."""
+    grid = grid_dir(steam, user)
+    cfg = os.path.dirname(grid)
+    os.makedirs(grid, exist_ok=True)
+    with _Lock(cfg):
+        plan = inspect_artwork_backup(steam, backup_dir, user, shortcut_ids)
+        if not plan["can_import"]:
+            raise SteamcaseError("The backup has missing or invalid files. Nothing was changed: %s" % plan["issues"][0])
+        if expected is not None and plan["token"] != expected:
+            raise SteamcaseError("The backup or current artwork changed since the preview. Review it again before importing.")
+        changed_ids = {row["id"] for row in plan["rows"] if row["status"] != "Identical"}
+        changed_ids.update(int(name.split("p.", 1)[0]) for name in plan["removals"])
+        if not changed_ids:
+            return {"imported": 0, "removed": 0, "unchanged": len(plan["rows"]),
+                    "backup": None, "account": plan["target_account"]}
+        rows = [row for row in plan["rows"] if row["id"] in changed_ids]
+        incoming = {row["filename"] for row in rows}
+        current = [name for name in _portrait_files(grid)
+                   if int(name.split("p.", 1)[0]) in changed_ids]
+        staged = tempfile.mkdtemp(prefix=".casecovers-import-", dir=cfg)
+        backup = None
+        mutation_started = False
+        try:
+            for index, row in enumerate(rows, 1):
+                source = os.path.join(backup_dir, row["filename"])
+                copied = os.path.join(staged, row["filename"])
+                if not _is_plain_file(source):
+                    raise SteamcaseError("Artwork file is missing or is a link: %s" % row["filename"])
+                shutil.copy2(source, copied)
+                size, digest = _check_artwork_file(copied)
+                if size != row["size"] or digest != row["sha256"]:
+                    raise SteamcaseError("Artwork changed during import staging: %s" % row["filename"])
+                if progress:
+                    progress(index, len(rows) * 2 + len(current), "Validating import files")
+            base = os.path.join(cfg, BACKUP_PREFIX + time.strftime("%Y%m%d_%H%M%S"))
+            backup, suffix = base, 1
+            while True:
+                try:
+                    os.makedirs(backup)
+                    break
+                except FileExistsError:
+                    suffix += 1
+                    backup = "%s-%d" % (base, suffix)
+            for index, name in enumerate(current, 1):
+                shutil.copy2(os.path.join(grid, name), os.path.join(backup, name))
+                if progress:
+                    progress(len(rows) + index, len(rows) * 2 + len(current), "Saving current artwork")
+            manifest = {"added": sorted(incoming - set(current)), "replaced": current,
+                        "moved": [], "operation": "artwork_import"}
+            with open(os.path.join(backup, "manifest.json"), "w", encoding="utf-8") as stream:
+                json.dump(manifest, stream, indent=2)
+            mutation_started = True
+            for name in current:
+                if name not in incoming:
+                    os.remove(os.path.join(grid, name))
+            for index, row in enumerate(rows, 1):
+                if row["status"] != "Identical":
+                    _safe_copy(os.path.join(staged, row["filename"]), os.path.join(grid, row["filename"]))
+                if progress:
+                    progress(len(rows) + len(current) + index, len(rows) * 2 + len(current), "Restoring artwork")
+            return {"imported": sum(row["status"] != "Identical" for row in rows),
+                    "removed": len(plan["removals"]), "unchanged": plan["identical"],
+                    "backup": backup, "account": plan["target_account"]}
+        except Exception as exc:
+            if mutation_started:
+                try:
+                    _undo(grid, backup, manifest)
+                except Exception as rollback_error:
+                    raise SteamcaseError("Import failed (%s); automatic rollback failed (%s). Original artwork is in %s." %
+                                         (exc, rollback_error, backup)) from exc
+            if backup:
+                shutil.rmtree(backup, ignore_errors=True)
+            raise SteamcaseError("Artwork import failed (%s). No changes were kept." % exc) from exc
+        finally:
+            shutil.rmtree(staged, ignore_errors=True)
+
+
 def _undo(grid, backup_dir, m):
     """Put the replaced files back from backup_dir and remove the added ones. Caller holds the lock. Returns files touched."""
     n = 0
@@ -924,8 +1224,11 @@ def restore_backup(steam, backup_dir, user=None, keep=False):
         jpgs = [str(x) for x in m.get("moved", [])]
     except (OSError, ValueError, AttributeError, TypeError, RecursionError, MemoryError, UnicodeError):
         raise SteamcaseError("The backup's manifest is damaged.")
-    if not all(_COVER_NAME.match(n) for n in names) or not all(_JPG_NAME.match(n) for n in jpgs):
+    if not all(_portrait_name(n) for n in names) or not all(_JPG_NAME.match(n) for n in jpgs):
         raise SteamcaseError("The backup's manifest lists unexpected files; refusing to use it.")
+    if m.get("operation") == "artwork_import" and any(
+            not _is_plain_file(os.path.join(real, n)) for n in m.get("replaced", [])):
+        raise SteamcaseError("The import's safety backup has missing files; refusing an incomplete restore.")
     with _Lock(cfg):
         n = _undo(grid, real, m)
         if not keep:
@@ -1042,7 +1345,7 @@ def cmd_restore(args):
 
 def main():
     ap = argparse.ArgumentParser(description="Steam 'physical case' covers for your library.")
-    ap.add_argument("--version", action="version", version="steam-case-covers %s" % APP_VERSION)
+    ap.add_argument("--version", action="version", version="Case Covers %s" % APP_VERSION)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     def common(p, make=False, apply_=False):

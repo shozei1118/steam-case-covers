@@ -1,243 +1,196 @@
-<p align="center">
-  <img src="assets/preview.png" alt="Steam Case Covers: your Steam library as a fan of physical game boxes">
-</p>
+<div align="center">
 
-<h1 align="center">steam-case-covers</h1>
+<img src="assets/icon.png" alt="Case Covers icon: three overlapping game covers" width="96" height="96">
 
-<p align="center">
-  Give every game in your Steam library a "physical copy" case cover.<br>
-  Everything runs on your computer: no login, no API key, no uploads.
-</p>
+# Case Covers
 
-<p align="center">
-  <a href="https://github.com/diegobergonsi/steam-case-covers/releases"><b>DOWNLOAD</b></a>
-</p>
+**Give every game in your Steam library a "physical copy" case cover.**<br>
+29 platform frames, from PlayStation and Xbox to Game Boy and Dreamcast, with backup and one-click restore.
 
-<p align="center">
-  <a href="#install">Install</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#features">Features</a> ·
-  <a href="#safety">Safety</a> ·
-  <a href="#steam-compatibility">Steam compatibility</a> ·
-  <a href="#command-line">Command line</a> ·
-  <a href="#faq">FAQ</a>
-</p>
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-577bce?style=flat-square&logo=windows&logoColor=e8eaf0)
+![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-577bce?style=flat-square&logo=apple&logoColor=e8eaf0)
+![Linux](https://img.shields.io/badge/Linux-Steam%20Deck-577bce?style=flat-square&logo=steamdeck&logoColor=e8eaf0)
+![Python](https://img.shields.io/badge/Python-3.12-577bce?style=flat-square&logo=python&logoColor=e8eaf0)
+![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
+![Version](https://img.shields.io/badge/version-1.1.0-83c7ee?style=flat-square)
 
-<p align="center">
-  <img src="assets/screenshot.png" width="460" alt="The steam-case-covers window with its three steps">
-  <br>
-  <em>The whole app: three steps, no terminal.</em>
-</p>
+[**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 
-<p align="center">
-  <em>
-    This project is not affiliated with Valve Corporation, Microsoft or any game publisher.
-    Steam and Windows are trademarks of their respective owners. See <a href="THIRD_PARTY.md">THIRD_PARTY.md</a>.
-  </em>
-</p>
+<img src="assets/steam-library.png" width="460" alt="A Steam library with case covers installed">
 
-## What is it?
+</div>
 
-Steam shows your library as tall portrait cards. This tool puts each game's own artwork inside a blue "box" with a Steam banner and platform badges, like a boxed console game, and installs the result as your custom artwork.
+---
 
-The artwork comes from Steam's own servers. The covers are built on your computer and stay there.
-
-<p align="center">
-  <img src="assets/steam-library.png" width="460" alt="A Steam library with the covers installed: every game is a blue case with a Steam banner and platform badges">
-  <br>
-  <em>How the covers look inside Steam.</em>
-</p>
-
-## Install
-
-<details>
-<summary><b>Windows</b></summary>
-
-Download `SteamCaseCovers-windows.exe` from the [Releases page](https://github.com/diegobergonsi/steam-case-covers/releases) and double-click it.
-
-If "Windows protected your PC" appears, click **More info**, then **Run anyway**. The app isn't code-signed (that costs money), which is why Windows warns you. Some antivirus tools also flag apps of this kind.
-
-</details>
-
-<details>
-<summary><b>macOS</b></summary>
-
-Download `SteamCaseCovers-macos.zip` from the [Releases page](https://github.com/diegobergonsi/steam-case-covers/releases) and double-click it to unzip. **Before you open the app**, run this in **Terminal** (change the path if the app isn't in Downloads), then double-click the app:
-
-```bash
-xattr -dr com.apple.quarantine ~/Downloads/SteamCaseCovers.app
-```
-
-Why: macOS blocks any app that doesn't come from a paid Apple developer (about 99 USD a year, which a free project can't justify). That command removes the "downloaded from the internet" mark, so macOS opens the app normally. The app isn't harmful or damaged, and its source code is here for anyone to read.
-
-If you open the app first instead, macOS shows **"SteamCaseCovers" Not Opened: Apple could not verify it is free of malware**. Click **Done** (not Move to Trash), then open **System Settings**, **Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the SteamCaseCovers message (it stays for about an hour; double-click the app again to bring it back). If the app then bounces in the Dock forever with no window, **restart your Mac** and use the Terminal command above instead. On macOS 14 or older you can also right-click the app and choose **Open**.
-
-The first time you press **Apply to Steam**, macOS may say the app isn't allowed to control Steam. Allow it in the prompt (or in **System Settings**, **Privacy & Security**), then press the button again.
-
-macOS support is **best effort**: the author has only tested it on an Apple Silicon MacBook Air. The build is for Apple Silicon (M1 or newer). On an Intel Mac, run it [from source](#from-source).
-
-</details>
-
-<details>
-<summary><b>Linux and Steam Deck</b></summary>
-
-On a Steam Deck, switch to **Desktop Mode** first. The app needs a desktop window, so it doesn't run in Gaming Mode.
-
-Download `SteamCaseCovers-linux` from the [Releases page](https://github.com/diegobergonsi/steam-case-covers/releases) and open it. On a Steam Deck a small pop-up appears: click **Launch** and the app opens.
-
-If your file manager doesn't run it, make it executable and start it from a terminal:
-
-```bash
-chmod +x SteamCaseCovers-linux
-./SteamCaseCovers-linux
-```
-
-</details>
-
-<details id="from-source">
-<summary><b>From source (any system)</b></summary>
-
-If you'd rather not trust a download, run it from the code. It needs Python 3.8+ and Pillow 10.3 or newer.
-
-```bash
-git clone https://github.com/diegobergonsi/steam-case-covers
-cd steam-case-covers
-python -m pip install -r requirements.txt
-python gui.py
-```
-
-On macOS and Linux, use `python3` instead of `python`. Run the tests with `python -m unittest discover -s tests`. A random-click robot that tries to break the window needs a display: `python tests/fuzz_gui.py` (on a server: `xvfb-run -a python tests/fuzz_gui.py`).
-
-</details>
-
-Release files come with a `SHA256SUMS` list so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
-
-## How it works
-
-1. **Get your game list.** Click **Download your game list**. Your browser opens Steam: log in if it asks, and you'll land on a page of plain text. Save it (Ctrl+S, or Cmd+S on a Mac) as `userdata.json`. The app notices the file by itself. No browser opening? Click **Copy link** and paste it yourself. Or tick **Only my installed games** to skip this step. On a Mac with Safari, set the format to **Page Source** when saving (or use Chrome or Firefox).
-2. **Make the covers.** Click **Make covers** and wait. You can cancel and run it again later: finished covers are kept, so it picks up where it stopped.
-3. **Add them to Steam.** Click **Apply to Steam**. If more than one Steam account is on this computer, the window shows which one will change; click **Change account** to pick another.
-
-> [!WARNING]
-> Step 3 **closes Steam for you** (any running game stops and downloads pause), adds the covers, and starts Steam again. Save your game first. The app asks before it does anything.
-
-Changed your mind?
-
-* **Restore previous artwork** undoes the last Apply. Press it again to go one step further back.
-* **Reset to Steam's default art** removes the covers this app made. It works even if you have no backup. If it also finds custom art that this app did not make (from SteamGridDB, or set by hand in Steam), it asks whether to remove that too: **Remove only ours** keeps it, **Remove all** brings back Steam's own art everywhere. Restore undoes either.
+> [!NOTE]
+> Case Covers is not affiliated with Valve, Sony, Microsoft, Nintendo, Sega or any game publisher. Platform names and logos are trademarks of their owners; see [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Features
 
-✅ Covers for your installed games, or your whole library <br>
-✅ Each cover is the game's own portrait inside a case, with the Steam banner and platform badges <br>
-✅ One click to install them: Steam is closed gracefully, backed up, updated and restarted <br>
-✅ Undo, step by step, and a reset to Steam's default art <br>
-✅ Cancel anytime; run again to continue <br>
-✅ Optional "skip blurry covers" for games Steam has no real portrait for <br>
-✅ Several Steam accounts on one computer: you choose which one gets the covers <br>
-✅ Works with the keyboard, scales on high-DPI screens and fits small screens like the Steam Deck's <br>
-✅ A "Check for updates" button, only when you click it: it asks GitHub for the newest version and never downloads or installs anything
-✅ Free software: no ads, no account, no telemetry
+| | |
+|---|---|
+| 🎮 **29 platform frames** | 600 × 900 case frames for PlayStation 1–5, PSP, PS Vita, Xbox to Xbox Series X\|S, NES to Switch 2, Game Boy to 3DS, Master System, Mega Drive, Saturn, Dreamcast and Steam. |
+| 📚 **Library** | Finds installed Steam games and existing Non-Steam shortcuts automatically; import `userdata.json` to include games you don't have installed. |
+| 🔎 **Search** | Find any game by name, independently of Steam. You always pick the exact match; nothing is guessed. |
+| 🖼 **Artwork sources** | Steam's own portraits (no key needed), SteamGridDB with your personal API key, or a local PNG/JPG/WebP image. |
+| ✏️ **Cover Editor** | Shows the current Steam cover beside the final framed preview before you change anything. |
+| 🏆 **Platinum Edition** | Optional silver-blue outer rim and one trophy on a completed game's cover; saved per game across sessions. |
+| 📦 **Batch** | Queue many covers, then apply them with one backup and at most one Steam restart, or export them all as PNG. Automatic generation joins the same queue. |
+| 💾 **Backup** | Export and import every locally stored custom portrait for a Steam account, shortcuts included, with a safety backup. |
+| ↩️ **Undo** | Restore steps back one Apply at a time; Reset returns to Steam's default art. |
+| 🛡 **Data safety** | Only portrait files in `config/grid` are touched; `shortcuts.vdf` is only read. API keys live in the OS credential store. Downloads are HTTPS-only, size-limited and checked. |
 
-## Safety
+## Installation
 
-* It only ever touches the portrait files (`<appid>p.png`, and `.jpg`, `.jpeg` or `.webp` ones that would hide a cover) in your Steam account's `config/grid` folder. Anything it moves is kept in the backup. It never touches your games or saves.
-* Before every change it makes a backup of exactly what it changes, writes files atomically, and rolls back if anything fails.
-* Two open windows can't change Steam's folder at the same time.
-* It never logs in, never asks for a password or API key, never uploads anything and never runs with elevated rights.
-* Files it reads from the internet are size-limited and checked before use.
+### Ready-made build (recommended)
 
-If you find a security problem, please [report it privately](SECURITY.md).
+Download the file for your system from the [latest release](../../releases/latest):
 
-## Steam compatibility
-
-✅ Linux and SteamOS (Steam in `~/.local/share/Steam`) <br>
-✅ Windows: tested by the author's colleague on a real PC, and the automated tests pass <br>
-🟡 macOS: tested on one Apple Silicon Mac (best effort)
+| System | File | Notes |
+|---|---|---|
+| **Windows** | `CaseCovers-Setup-windows.exe` | Installer: per-user, no administrator rights; updates keep your settings and API key. |
+| **Windows** | `CaseCovers-windows.exe` | Portable: just double-click it. |
+| **macOS** | `CaseCovers-macos.zip` | Apple Silicon (M1 or newer). |
+| **Linux / Steam Deck** | `CaseCovers-linux` | On a Steam Deck, use Desktop Mode. |
 
 > [!NOTE]
-> If something doesn't work on your system, please [open an issue](https://github.com/diegobergonsi/steam-case-covers/issues) with your system and what you saw. Feedback from Windows and macOS is especially welcome.
+> The builds are not code-signed. On Windows, SmartScreen may warn on first launch: **More info → Run anyway**. On macOS, run `xattr -dr com.apple.quarantine ~/Downloads/CaseCovers.app` in Terminal before opening the app. Step-by-step help is in the [detailed notes](docs/DETAILS.md#installation-help).
 
-## Command line
+Every release has a `SHA256SUMS` file and signed build provenance, so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
 
-Everything the window does is also available in a terminal:
+### From source
+
+1. Install [Python 3.10 or newer](https://www.python.org/downloads/) (3.12 is used for releases).
+2. Download or clone this repository.
+3. Install the dependencies and start the app:
 
 ```bash
-python steamcase.py make --library userdata.json   # build covers
-python steamcase.py apply --close-steam            # install them
-python steamcase.py restore                        # undo the last apply
-python steamcase.py reset                          # back to Steam's default art
-python steamcase.py reset --everything             # ...also removing art from other sources
+python -m pip install -r requirements.txt
+python qt_gui.py
 ```
 
-| Command | What it does |
+On macOS and Linux, use `python3`. The previous Tkinter app is still available with `python gui.py`.
+
+## Usage
+
+### Getting started
+
+1. **Choose a game.** **Library** lists your installed Steam games and shortcuts. For the rest of your library, click **Download your game list**, sign in to Steam in your browser, save the page as `userdata.json` and click **Load userdata.json**. Use **Search** for a game outside your Steam library.
+2. **Choose artwork and a frame.** Click a portrait thumbnail or import your own image, then pick one of the 29 platform frames. Tick **Platinum Edition** for a game you have completed; the editor saves the choice for that game and updates the preview.
+3. **Apply or export.** **Apply to Steam** changes one game, **Add to batch** queues it, and **Export PNG** saves the cover without touching Steam.
+
+> [!WARNING]
+> Apply closes Steam if it is running (a running game stops and downloads pause), backs up the art it changes and can start Steam again. Save your game first; the app always asks before it does anything.
+
+> [!NOTE]
+> Steam artwork needs no API key. For SteamGridDB, add your personal key under **Settings**; it is stored only in the OS credential store (Windows Credential Manager, macOS Keychain or the Linux secret service), never in a settings file.
+
+### Views
+
+| View | What it is for |
 |---|---|
-| `list` | Show the games it found |
-| `make` | Build covers into `./covers` |
-| `apply` | Copy covers into Steam, with a backup |
-| `run` | `make` then `apply` |
-| `restore` | Undo the last apply (run again to go further back) |
-| `reset` | Remove the covers this app made from Steam (`--everything` also removes custom art from other sources) |
+| **Library** | Your Steam games and shortcuts, with live search, category filters and the Cover Editor. |
+| **Search** | Find a game by name and pick the exact result; uses the same artwork grid and editor. |
+| **Batch** | The queue: **Apply all to Steam**, **Export all PNGs** and **Generate all covers**. |
+| **Backup** | Export, preview and import portrait artwork; **Restore previous artwork** and **Reset to Steam default**. |
+| **Settings** | SteamGridDB API key and app preferences. |
 
-Run `python steamcase.py -h` for all options, such as `--only`, `--skip-auto-art`, `--steam-dir` and `--user` (the account's folder number in Steam's `userdata`, to pick one of several accounts).
+### Where your data lives
 
-## FAQ
+| System | Covers folder |
+|---|---|
+| Windows | `%LOCALAPPDATA%\steamcase\covers` |
+| macOS | `~/Library/Application Support/steamcase/covers` |
+| Linux | `~/.local/share/steamcase/covers` |
 
-<details>
-<summary><b>It says my game list has no games in it</b></summary>
+Steam's copies live in `userdata/<id>/config/grid`, next to the backups the app makes (`grid_backup_*`). Logs are in `%LOCALAPPDATA%\Case Covers\logs` on Windows and `~/.local/state/case-covers` on other systems; they never contain API keys.
 
-You weren't logged in to Steam in your browser when you saved the page. Steam doesn't show an error in that case; it gives an empty list. Click **Download your game list** again: it opens Steam's login page first, so log in there, then save the page you land on. If that page shows no games even though you just logged in, refresh it (F5, or Cmd+R on a Mac) before saving.
+> [!TIP]
+> Changed your mind? **Restore previous artwork** undoes the last Apply; press it again to go further back. **Reset to Steam default** removes the covers this app made; enable **Reset all custom portraits** to also remove art from other sources.
 
-</details>
+### Known limitations
 
-<details>
-<summary><b>Why do some covers look blurry?</b></summary>
+- Steam may show cached artwork until the client refreshes.
+- Some older games have no real portrait on Steam, only a blurry stand-in; tick **Skip blurry Steam artwork** in Batch to leave them alone.
+- Screen readers are not supported; the window works fully with the keyboard, and the [command line](docs/DETAILS.md#command-line) is the accessible alternative.
 
-Many older or smaller games have no real portrait on Steam. Steam builds a stand-in from the wide header image, so the title banner sits in the middle of a blurred copy of itself. Tick **Skip blurry covers** (hover the **i** next to it) to leave those games alone.
+More answers are in the [FAQ](docs/DETAILS.md#faq).
 
-</details>
+## Development
 
-<details>
-<summary><b>I set custom art by hand in Steam. Will these replace it?</b></summary>
+### Run from source
 
-Steam shows art you set by hand (or got from SteamGridDB) before these covers. **Apply to Steam** moves such art for the covered games into the backup, so the case is shown, and **Restore** brings it back. To clear all of it and get Steam's own art, use **Reset to Steam's default art** and choose **Remove all**.
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.venv\Scripts\python.exe qt_gui.py
+```
 
-</details>
+### Tests
 
-<details>
-<summary><b>Where are the covers stored?</b></summary>
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests
+.venv\Scripts\python.exe qt_gui.py --selftest
+.venv\Scripts\python.exe gui.py --selftest
+```
 
-In your own user folder: `~/.local/share/steamcase/covers` on Linux, `%LOCALAPPDATA%\steamcase\covers` on Windows and `~/Library/Application Support/steamcase/covers` on macOS. Use **Open covers folder** in the app. Steam's copies live in `userdata/<id>/config/grid`; copy that folder to use the covers on another computer.
+The tests use temporary Steam folders and a local test server; they never touch your real Steam data or need an API key.
 
-</details>
+### Build
 
-<details>
-<summary><b>Does it work for non-Steam games and shortcuts?</b></summary>
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_windows.ps1 -Installer
+```
 
-Not yet. Only games in your Steam library.
+1. Stamps the latest release tag as the version.
+2. Builds `dist\CaseCovers.exe` with PyInstaller and runs its selftest.
+3. With `-Installer`, compiles the Inno Setup 6 installer and smoke-tests a silent install, the installed selftest and an uninstall.
+4. Moves the verified installer to `build\installer\`; a failed check keeps the previous one.
 
-</details>
+### Releases
 
-<details>
-<summary><b>Can I get the covers without running it?</b></summary>
+Pushing a `vX.Y.Z` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It tests and builds Windows, macOS and Linux, smoke-tests the Windows installer, and publishes everything with checksums and signed provenance on the Releases page. GitHub Releases are the only distribution channel.
 
-Covers I already made are on SteamGridDB: <https://www.steamgriddb.com/profile/76561198040695197/grids/1>.
+### Project layout
 
-</details>
+```text
+qt_gui.py              Main PySide6 window: Library, Search, Batch, Backup, Settings
+gui.py                 Tkinter fallback with the original three-step workflow
+steamcase.py           Steam discovery, rendering, apply, backup, restore and the CLI
+cover_workflow.py      Artwork search, cache, credentials and platform export
+case_service.py        Single and batch workflows for both GUIs; preferences and queue
+platform_catalog.py    Loads platforms/catalog.json (data only)
+crash_report.py        Python and native crash logs
+platforms/catalog.json 29 platform definitions
+assets/frames/         600 × 900 transparent case frames
+assets/logos/          Platform logo variants (see THIRD_PARTY.md)
+tools/                 Frame, icon and preview builders, Windows build and installer
+tests/                 Unit, GUI and fuzz tests
+```
 
-<details>
-<summary><b>Are screen readers supported?</b></summary>
+Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Frame architecture: [docs/stages-1-to-3.md](docs/stages-1-to-3.md). Search and export: [docs/manual-workflow.md](docs/manual-workflow.md).
 
-No. The window works fully with the keyboard (Tab, Space, Enter), but the toolkit it uses can't talk to screen readers. The command line is the accessible alternative.
+## Changelog
 
-</details>
+### Unreleased
+
+- Optional Platinum Edition rim and a single trophy for all 29 platforms, with per-game persistence, Batch and Steam/PNG export support. [Compare normal and Platinum covers](docs/platinum-comparison.png).
+- New PySide6 app with **Library**, **Search**, **Batch**, **Backup** and **Settings** views and a shared Cover Editor.
+- 29 platform frames with local logo variants; SteamGridDB artwork with a key stored in the OS credential store.
+- Windows installer, persistent crash logs and a renamed app: Case Covers.
+
+### 1.1.0
+
+- Layout follows the real text size; account picker for several Steam accounts; Reset can also remove art from other sources.
+
+All versions are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 
-Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community for making custom Steam artwork easy to share, and to the authors of [Pillow](https://python-pillow.org), [PyInstaller](https://pyinstaller.org), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](THIRD_PARTY.md).
+Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community, and to the authors of [Pillow](https://python-pillow.org), [PySide6](https://doc.qt.io/qtforpython-6/), [PyInstaller](https://pyinstaller.org), [Inno Setup](https://jrsoftware.org/isinfo.php), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](THIRD_PARTY.md).
 
-Game artwork shown above belongs to its publishers and developers. Covers you generate contain that artwork: keep them for personal use.
+Game artwork belongs to its publishers and developers. Covers you generate contain that artwork: keep them for personal use.
 
 ## License
 
-Copyright (C) 2026 Diego Bergonsi. Free software under the [GNU General Public License v3 or later](LICENSE): you may use, change and share it, and anything you distribute built on it must stay open under the same license.
+Copyright (C) 2026 Diego Bergonsi. Free software under the [GNU General Public License v3 or later](LICENSE).

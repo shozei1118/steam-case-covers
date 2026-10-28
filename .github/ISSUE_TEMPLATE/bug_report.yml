@@ -49,5 +49,5 @@ body:
       label: Output of the network check (if Step 2 fails)
       description: |
         Run the app from a terminal with `--check-network` and paste what it prints, for example
-        `./SteamCaseCovers-linux --check-network` or `SteamCaseCovers.exe --check-network`.
+        `./CaseCovers-linux --check-network` or `CaseCovers.exe --check-network`.
       render: text

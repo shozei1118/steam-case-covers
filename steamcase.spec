@@ -1,16 +1,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Diego Bergonsi. Part of steam-case-covers: https://github.com/diegobergonsi/steam-case-covers
-# PyInstaller recipe. Build with:  pyinstaller steamcase.spec
+# PyInstaller recipe for the PySide6 desktop app. Tk fallback: steamcase-tk.spec.
 import os, sys
 
 # assets/version.txt only exists in release builds (the workflow writes the tag into it); source runs report "dev"
-a = Analysis(["gui.py"], datas=[("assets/frame.png", "assets"), ("assets/icon.png", "assets")] + ([("assets/version.txt", "assets")] if os.path.exists("assets/version.txt") else []), excludes=["numpy", "matplotlib", "scipy", "pandas"])
+a = Analysis(["qt_gui.py"], datas=[("assets/frame.png", "assets"), ("assets/icon.png", "assets"),
+                                ("assets/frames", "assets/frames"), ("platforms/catalog.json", "platforms")]
+             + ([("assets/version.txt", "assets")] if os.path.exists("assets/version.txt") else []),
+             hiddenimports=["keyring.backends.Windows", "keyring.backends.macOS", "keyring.backends.SecretService"],
+             excludes=["numpy", "matplotlib", "scipy", "pandas", "tkinter",
+                       "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets",
+                       "PySide6.QtWebEngineQuick", "PySide6.QtMultimedia"])
 pyz = PYZ(a.pure)
 
 if sys.platform == "darwin":                       # macOS: folder-based .app (single-file .app is discouraged)
-    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="SteamCaseCovers", console=False)
-    coll = COLLECT(exe, a.binaries, a.datas, name="SteamCaseCovers")
-    app = BUNDLE(coll, name="SteamCaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.diegobergonsi.steamcasecovers")
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="CaseCovers", console=False)
+    coll = COLLECT(exe, a.binaries, a.datas, name="CaseCovers")
+    app = BUNDLE(coll, name="CaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.diegobergonsi.casecovers")
 else:                                              # Windows and Linux: one file
-    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name="SteamCaseCovers", console=False,
+    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name="CaseCovers", console=False,
               icon="assets/icon.ico" if sys.platform.startswith("win") else None)

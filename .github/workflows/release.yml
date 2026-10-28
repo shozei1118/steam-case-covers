@@ -17,11 +17,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            asset: SteamCaseCovers-windows.exe
+            asset: CaseCovers-windows.exe
           - os: macos-latest
-            asset: SteamCaseCovers-macos.zip
+            asset: CaseCovers-macos.zip
           - os: ubuntu-latest
-            asset: SteamCaseCovers-linux
+            asset: CaseCovers-linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,7 +40,7 @@ jobs:
       - name: Tests
         run: python -m unittest discover -s tests -v
       - name: Selftest (source)
-        run: python gui.py --selftest
+        run: python qt_gui.py --selftest
       - name: Build
         run: pyinstaller --noconfirm steamcase.spec
 
@@ -48,24 +48,57 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath dist\SteamCaseCovers.exe -ArgumentList "--selftest" -Wait -PassThru
+          $p = Start-Process -FilePath dist\CaseCovers.exe -ArgumentList "--selftest" -Wait -PassThru
           if ($p.ExitCode -ne 0) { exit 1 }
-          Copy-Item dist\SteamCaseCovers.exe ${{ matrix.asset }}
+          Copy-Item dist\CaseCovers.exe ${{ matrix.asset }}
+      - name: Installer (build and smoke test) - Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A tag build uses its version; a manual run gets a placeholder version.
+          $version = if ($env:IS_TAG -eq 'true' -and $env:REF_NAME -match '^v(\d+\.\d+\.\d+)$') { $Matches[1] } else { '0.0.0' }
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+                  Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc "/DAppVersion=$version" "/O$PWD\build\installer" tools\casecovers.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+          $setup = "build\installer\CaseCovers-Setup-$version.exe"
+          # Install, run the installed selftest and uninstall before anything is released.
+          $smoke = Join-Path $env:RUNNER_TEMP 'casecovers-smoke'
+          $p = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOICONS', "/DIR=`"$smoke`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$smoke\CaseCovers.exe")) { throw 'Silent install failed.' }
+          $p = Start-Process -FilePath "$smoke\CaseCovers.exe" -ArgumentList '--selftest' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Installed selftest failed.' }
+          $p = Start-Process -FilePath "$smoke\unins000.exe" -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($p.ExitCode -ne 0 -or (Test-Path "$smoke\CaseCovers.exe")) { throw 'Silent uninstall failed.' }
+          Copy-Item $setup CaseCovers-Setup-windows.exe
+      - if: runner.os == 'Windows'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CaseCovers-Setup-windows.exe
+          path: CaseCovers-Setup-windows.exe
       - name: Selftest (built app) - macOS
         if: runner.os == 'macOS'
         run: |
           # Apple Silicon refuses unsigned programs, and a downloaded unsigned app is reported as "damaged".
           # An ad-hoc signature (free, no Apple account) turns that into the normal "unidentified developer" prompt.
-          xattr -cr dist/SteamCaseCovers.app
-          codesign --force --deep --sign - dist/SteamCaseCovers.app
-          codesign --verify --deep --strict --verbose=2 dist/SteamCaseCovers.app
-          dist/SteamCaseCovers.app/Contents/MacOS/SteamCaseCovers --selftest
-          ditto -c -k --keepParent dist/SteamCaseCovers.app ${{ matrix.asset }}
+          xattr -cr dist/CaseCovers.app
+          codesign --force --deep --sign - dist/CaseCovers.app
+          codesign --verify --deep --strict --verbose=2 dist/CaseCovers.app
+          dist/CaseCovers.app/Contents/MacOS/CaseCovers --selftest
+          ditto -c -k --keepParent dist/CaseCovers.app ${{ matrix.asset }}
       - name: Selftest (built app) - Linux
         if: runner.os == 'Linux'
         run: |
-          dist/SteamCaseCovers --selftest
-          cp dist/SteamCaseCovers ${{ matrix.asset }}
+          dist/CaseCovers --selftest
+          cp dist/CaseCovers ${{ matrix.asset }}
           chmod +x ${{ matrix.asset }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

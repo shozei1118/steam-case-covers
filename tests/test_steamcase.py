@@ -3,6 +3,7 @@
 """Regression tests: normal use, plus the attacks the app must refuse. No network, no real Steam.
 Run:  python -m unittest discover -s tests -v"""
 import http.server, json, os, shutil, socketserver, struct, sys, tempfile, threading, time, unittest, zlib
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import steamcase as sc
@@ -40,6 +41,32 @@ class Base(unittest.TestCase):
     def read(self, *parts):
         with open(os.path.join(*parts), "rb") as f:
             return f.read()
+
+
+class LibraryStoreMapping(Base):
+    def test_owned_ids_keep_offline_placeholders_but_exclude_known_non_games(self):
+        info = {220: {"name": "DLC", "type": 1},
+                440: {"name": "Portal 2", "type": 0}}
+        with mock.patch.object(sc, "store_items", return_value=info):
+            self.assertEqual(sc.list_games({220: None, 440: None, 570: None}, include_unknown=True),
+                             [(440, "Portal 2"), (570, "Steam app 570")])
+
+    def test_store_metadata_follows_returned_appid_when_entries_are_omitted(self):
+        response = {"response": {"store_items": [
+            {"appid": 570, "name": "Dota 2"}, {"appid": 220, "name": "Half-Life 2"}]}}
+        with mock.patch.object(sc, "http_get", return_value=json.dumps(response).encode("utf-8")):
+            found = sc.store_items([220, 440, 570])
+        self.assertEqual(found[220]["name"], "Half-Life 2")
+        self.assertEqual(found[570]["name"], "Dota 2")
+        self.assertNotIn(440, found)
+
+    def test_store_metadata_without_ids_requires_complete_response(self):
+        response = {"response": {"store_items": [{"name": "One"}]}}
+        with mock.patch.object(sc, "http_get", return_value=json.dumps(response).encode("utf-8")):
+            self.assertEqual(sc.store_items([220, 440]), {})
+        response["response"]["store_items"].append({"name": "Two"})
+        with mock.patch.object(sc, "http_get", return_value=json.dumps(response).encode("utf-8")):
+            self.assertEqual(sc.store_items([220, 440])[440]["name"], "Two")
 
 
 class ApplyRestore(Base):
@@ -186,7 +213,12 @@ class ApplyRestore(Base):
         target = os.path.join(self.tmp, "elsewhere.jpg")
         with open(target, "wb") as f:
             f.write(b"X")
-        os.symlink(target, os.path.join(self.grid, "1p.jpg"))
+        try:
+            os.symlink(target, os.path.join(self.grid, "1p.jpg"))
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege is unavailable")
+            raise
         r = sc.apply_covers(self.steam, self.covers, files=[self.cover(1)])
         self.assertEqual(r["jpg_moved"], 0)
         self.assertTrue(os.path.islink(os.path.join(self.grid, "1p.jpg")))
@@ -241,59 +273,6 @@ class ApplyRestore(Base):
             sc.restore_backup(self.steam, r["backup"])
 
 
-class UpdateCheck(unittest.TestCase):
-    def releases(self, *rows):
-        real = sc.http_get
-        sc.http_get = lambda url, tries=3: json.dumps(list(rows)).encode()
-        self.addCleanup(setattr, sc, "http_get", real)
-
-    def test_newer_release_is_found_and_the_link_is_built_by_us(self):
-        self.releases({"tag_name": "v0.9.10", "html_url": "https://evil.example/x"}, {"tag_name": "v0.9.9"})
-        r = sc.check_for_update("v0.9.9")
-        self.assertEqual((r["latest"], r["newer"]), ("v0.9.10", True))
-        self.assertEqual(r["url"], "https://github.com/diegobergonsi/steam-case-covers/releases/tag/v0.9.10")
-
-    def test_versions_compare_as_numbers_not_text(self):
-        self.releases({"tag_name": "v0.9.10"}, {"tag_name": "v0.9.9"})
-        self.assertFalse(sc.check_for_update("v0.9.10")["newer"])
-        self.assertTrue(sc.check_for_update("v0.9.9")["newer"])
-        self.assertFalse(sc.check_for_update("v1.0.0")["newer"])
-
-    def test_drafts_and_odd_tags_are_ignored(self):
-        self.releases({"tag_name": "v9.9.9", "draft": True}, {"tag_name": "v1.0.0/../x"}, {"tag_name": "nightly"},
-                      {"tag_name": 7}, "junk", None, {"tag_name": "v0.9.8"})
-        self.assertEqual(sc.check_for_update("v0.9.8")["latest"], "v0.9.8")
-
-    def test_a_source_run_has_no_version_to_compare(self):
-        self.releases({"tag_name": "v0.9.10"})
-        r = sc.check_for_update("dev")
-        self.assertEqual((r["latest"], r["newer"]), ("v0.9.10", None))
-
-    def test_bad_answers_and_network_errors_become_a_clear_error(self):
-        for body in (b"not json", b"{}", b"[]", b"[" * 100000):
-            real = sc.http_get
-            sc.http_get = lambda url, tries=3, b=body: b
-            try:
-                with self.assertRaises(sc.SteamcaseError):
-                    sc.check_for_update("v0.9.9")
-            finally:
-                sc.http_get = real
-
-        def down(url, tries=3):
-            raise OSError("no route")
-        real, sc.http_get = sc.http_get, down
-        try:
-            with self.assertRaises(sc.SteamcaseError):
-                sc.check_for_update("v0.9.9")
-        finally:
-            sc.http_get = real
-
-    def test_a_stamped_version_must_look_like_a_tag(self):
-        self.assertEqual(sc.version_tuple("v0.9.10"), (0, 9, 10))
-        for bad in ("dev", "0.9.10", "v1.0", "v1.0.0-rc1", "v1.0.0\nx", "", None, 5):
-            self.assertIsNone(sc.version_tuple(bad))
-
-
 class Reset(Base):
     """Removing our covers so Steam shows its own art again, without touching art the user set themselves."""
 
@@ -322,6 +301,20 @@ class Reset(Base):
         im.putpixel((300, 40), (255, 0, 0, 255))
         im.save(tampered)
         self.assertEqual([sc.is_steamcase_cover(p) for p in (ours, mine, jpg, tampered)], [True, False, False, False])
+
+    def test_legacy_cover_with_old_header_can_still_be_reset(self):
+        if sc.Image is None:
+            self.skipTest("Pillow missing")
+        frame_path = os.path.join(os.path.dirname(__file__), "fixtures", "legacy_steam_frame_with_os_badges.png")
+        portrait = os.path.join(self.tmp, "portrait.png")
+        sc.Image.new("RGB", (600, 900), (40, 80, 120)).save(portrait)
+        cover = os.path.join(self.grid, "8p.png")
+        with sc.Image.open(frame_path) as frame:
+            sc.build_cover(portrait, cover, frame.convert("RGBA"))
+        self.assertTrue(sc.is_steamcase_cover(cover))
+        result = sc.reset_to_default(self.steam)
+        self.assertEqual(result["removed"], 1)
+        self.assertFalse(os.path.exists(cover))
 
     def test_reset_removes_ours_keeps_the_users_art_and_can_be_undone(self):
         for i in (1, 2, 3):
@@ -388,6 +381,33 @@ class Reset(Base):
 
 
 class SteamProcess(Base):
+    def test_windows_background_processes_have_no_console(self):
+        flag = 0x08000000  # subprocess.CREATE_NO_WINDOW on Windows
+        with mock.patch.object(sc.sys, "platform", "win32"), \
+             mock.patch.object(sc.subprocess, "CREATE_NO_WINDOW", flag, create=True), \
+             mock.patch.object(sc.subprocess, "run", return_value=mock.Mock(stdout="Steam.exe\n")) as run:
+            for _ in range(20):  # repeated GUI polls must all use the same hidden launch
+                self.assertTrue(sc.steam_running())
+            self.assertEqual(run.call_count, 20)
+            for call in run.call_args_list:
+                self.assertEqual(call.kwargs["creationflags"], flag)
+                self.assertTrue(call.kwargs["capture_output"])
+
+            run.side_effect = OSError("tasklist failed")
+            self.assertFalse(sc.steam_running())
+
+        with mock.patch.object(sc.sys, "platform", "win32"), \
+             mock.patch.object(sc.subprocess, "CREATE_NO_WINDOW", flag, create=True), \
+             mock.patch.object(sc, "_steam_launcher", return_value=["steam.exe"]), \
+             mock.patch.object(sc.subprocess, "Popen") as popen:
+            sc.start_steam(self.steam)
+            self.assertEqual(popen.call_args.kwargs["creationflags"], flag)
+            popen.reset_mock()
+            with mock.patch.object(sc, "steam_running", side_effect=[True, False]), \
+                 mock.patch.object(sc.time, "sleep"):
+                self.assertTrue(sc.close_steam(self.steam))
+            self.assertEqual(popen.call_args.kwargs["creationflags"], flag)
+
     def _ps(self, output):
         real = sc.subprocess.run
         sc.subprocess.run = lambda *a, **k: type("R", (), {"stdout": output})()
@@ -492,13 +512,15 @@ class Concurrency(Base):
         sc.store_items = lambda ids, log=None, cancelled=None, errors=None: {i: {"type": 0, "name": games[i], "assets": {"asset_url_format": "s/${FILENAME}", "library_capsule_2x": "h/c.jpg"}} for i in ids}
         sc.http_get = lambda url, tries=3: buf.getvalue()
         out = []
+        failures = []
         try:
-            threads = [threading.Thread(target=lambda: out.append(sc.make_covers(games, os.path.join(self.tmp, "cv")))) for _ in range(3)]
+            threads = [threading.Thread(target=lambda: out.append(sc.make_covers(
+                games, os.path.join(self.tmp, "cv"), log=failures.append))) for _ in range(3)]
             [t.start() for t in threads]
             [t.join() for t in threads]
         finally:
             sc.store_items, sc.http_get = real_store, real_get
-        self.assertTrue(all(len(r["failed"]) == 0 for r in out), [len(r["failed"]) for r in out])
+        self.assertTrue(all(len(r["failed"]) == 0 for r in out), failures)
         left = os.listdir(os.path.join(self.tmp, "cv"))
         self.assertEqual(len([f for f in left if f.endswith(".png")]), 30)
         self.assertEqual([f for f in left if not f.endswith(".png")], [])

@@ -3,6 +3,12 @@
 All notable changes. Versions follow [Semantic Versioning](https://semver.org); `0.x` versions are pre-releases.
 
 ## [Unreleased]
+- Added an optional Platinum Edition outer rim and one centered trophy to all 29 platform covers. The choice persists per game and follows previews, Batch, PNG export, and Steam Apply. Normal covers render unchanged.
+- Reuse artwork-grid tiles between games so repeatedly loading large SteamGridDB result sets cannot trigger a native PySide6 access violation while adding covers to Batch. Added persistent Qt/Python and native crash logs plus a 60-cover stress check.
+- Strengthened the PlayStation 5 and Wii case rims and lower lips so their platform colors remain visible around dark artwork; frame geometry and header logos are unchanged.
+- Arranged the three Steam steps beside a full-height manual search/export panel, with a stacked layout on narrow windows. Artwork choices now appear as a scrollable thumbnail grid with background loading and cache reuse; the selected image still shows its final platform frame.
+- Renamed the app and release artifacts to Case Covers, with a new original multi-cover icon.
+- Removed the update-check button and its GitHub request; Settings now occupies the upper-right action position. The `--version` CLI option remains available.
 
 ## [1.1.0] - 2026-10-12
 - Layout follows the real text size, so the window is no longer clipped on screens with large text or 225% zoom.
