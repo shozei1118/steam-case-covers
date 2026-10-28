@@ -33,6 +33,8 @@ class PlatinumWorkflow(unittest.TestCase):
                     a, b = a.convert("RGBA"), b.convert("RGBA")
                     self.assertEqual(a.size, (600, 900))
                     self.assertEqual(b.size, (600, 900))
+                    self.assertEqual(a.getchannel("A").tobytes(), b.getchannel("A").tobytes())
+                    self.assertEqual(a.crop((14, 14, 586, 96)).tobytes(), b.crop((14, 14, 586, 96)).tobytes())
                     self.assertIsNone(ImageChops.difference(a.crop((14, 96, 586, 872)),
                                                              b.crop((14, 96, 586, 872))).getbbox())
                     self.assertIsNone(ImageChops.difference(a.crop((38, 20, 562, 84)),

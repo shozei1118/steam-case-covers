@@ -12,7 +12,7 @@
 ![Linux](https://img.shields.io/badge/Linux-Steam%20Deck-577bce?style=flat-square&logo=steamdeck&logoColor=e8eaf0)
 ![Python](https://img.shields.io/badge/Python-3.12-577bce?style=flat-square&logo=python&logoColor=e8eaf0)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
-![Version](https://img.shields.io/badge/version-1.5.0-83c7ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.1-83c7ee?style=flat-square)
 
 [**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 

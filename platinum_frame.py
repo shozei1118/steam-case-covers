@@ -14,23 +14,6 @@ def overlay():
     def box(coords):
         return tuple(value * scale for value in coords)
 
-    # Narrow metallic bands stay outside the artwork window (x=14..585).
-    bands = (
-        (0, (65, 79, 98, 255)),
-        (2, (194, 214, 226, 255)),
-        (4, (239, 246, 250, 255)),
-        (6, (136, 162, 181, 255)),
-        (9, (76, 98, 118, 255)),
-        (11, (214, 229, 237, 230)),
-    )
-    for inset, color in bands:
-        draw.rectangle(box((inset, inset, 599 - inset, 899 - inset)),
-                       outline=color, width=scale * (2 if inset in (0, 4) else 1))
-    # Restrained icy reflection along the top and side edges.
-    draw.line(box((18, 3, 581, 3)), fill=(248, 253, 255, 215), width=scale)
-    draw.line(box((3, 22, 3, 840)), fill=(204, 230, 245, 135), width=scale)
-    draw.line(box((596, 22, 596, 840)), fill=(225, 241, 251, 115), width=scale)
-
     # One original cup silhouette, centered entirely in the lower lip.
     outline = (40, 57, 75, 255)
     metal = (226, 239, 247, 255)
@@ -54,4 +37,15 @@ def overlay():
 def apply(frame):
     if frame.size != (600, 900):
         raise ValueError("Platinum frames must be 600 x 900 pixels.")
-    return Image.alpha_composite(frame.convert("RGBA"), overlay())
+    from platform_catalog import local_asset
+    original = frame.convert("RGBA")
+    with Image.open(local_asset("assets/platinum-rim.png")) as source:
+        rim = source.convert("RGBA")
+    result = original.copy()
+    # Replace only the existing case material, retaining the exact source alpha,
+    # rounded corners, header, separator and artwork. No extra contour is drawn.
+    for region in ((0, 0, 600, 14), (0, 14, 14, 872),
+                   (586, 14, 600, 872), (0, 872, 600, 900)):
+        result.paste(rim.crop(region), region[:2])
+    result.putalpha(original.getchannel("A"))
+    return Image.alpha_composite(result, overlay())

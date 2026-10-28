@@ -4,6 +4,9 @@ All notable changes. Versions follow [Semantic Versioning](https://semver.org); 
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-28
+- Corrected Platinum Edition to reuse the original SVG case geometry, rounded corners, shading and lip layers instead of drawing an extra rectangular outline. Platform headers and artwork remain pixel-identical.
+
 ## [1.5.0] - 2026-10-28
 - Added a PySide6 app with Library, Search, Batch, Backup and Settings, plus one shared Cover Editor.
 - Added 29 platform frames, SteamGridDB artwork search with OS-stored credentials, and local PNG export without Steam.
