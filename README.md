@@ -12,7 +12,7 @@
 ![Linux](https://img.shields.io/badge/Linux-Steam%20Deck-577bce?style=flat-square&logo=steamdeck&logoColor=e8eaf0)
 ![Python](https://img.shields.io/badge/Python-3.12-577bce?style=flat-square&logo=python&logoColor=e8eaf0)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
-![Version](https://img.shields.io/badge/version-1.1.0-83c7ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-83c7ee?style=flat-square)
 
 [**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 
@@ -23,7 +23,9 @@
 ---
 
 > [!NOTE]
-> Case Covers is not affiliated with Valve, Sony, Microsoft, Nintendo, Sega or any game publisher. Platform names and logos are trademarks of their owners; see [THIRD_PARTY.md](THIRD_PARTY.md).
+> Case Covers is not affiliated with Valve, Sony, Microsoft, Nintendo, Sega or any game publisher. Platform names and logos are trademarks of their owners; see [THIRD_PARTY.md](docs/THIRD_PARTY.md).
+
+The Tkinter fallback also keeps its saved-games-page achievement highlighting, colour controls and command-line options; see [detailed notes](docs/DETAILS.md#tkinter-completion-highlights). The Cover Editor’s Platinum Edition switch is manual and adds no text to the cover.
 
 ## Features
 
@@ -56,7 +58,7 @@ Download the file for your system from the [latest release](../../releases/lates
 > [!NOTE]
 > The builds are not code-signed. On Windows, SmartScreen may warn on first launch: **More info → Run anyway**. On macOS, run `xattr -dr com.apple.quarantine ~/Downloads/CaseCovers.app` in Terminal before opening the app. Step-by-step help is in the [detailed notes](docs/DETAILS.md#installation-help).
 
-Every release has a `SHA256SUMS` file and signed build provenance, so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
+Every release has a `SHA256SUMS` file and signed build provenance, so you can check what you downloaded. See [SECURITY.md](docs/SECURITY.md).
 
 ### From source
 
@@ -158,7 +160,7 @@ qt_gui.py              Main PySide6 window: Library, Search, Batch, Backup, Sett
 gui.py                 Tkinter fallback with the original three-step workflow
 steamcase.py           Steam discovery, rendering, apply, backup, restore and the CLI
 cover_workflow.py      Artwork search, cache, credentials and platform export
-case_service.py        Single and batch workflows for both GUIs; preferences and queue
+case_service.py        Qt single and batch workflows; preferences and queue
 platform_catalog.py    Loads platforms/catalog.json (data only)
 crash_report.py        Python and native crash logs
 platforms/catalog.json 29 platform definitions
@@ -172,7 +174,7 @@ Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Fram
 
 ## Changelog
 
-### Unreleased
+### 1.5.0
 
 - Optional Platinum Edition rim and a single trophy for all 29 platforms, with per-game persistence, Batch and Steam/PNG export support. [Compare normal and Platinum covers](docs/platinum-comparison.png).
 - New PySide6 app with **Library**, **Search**, **Batch**, **Backup** and **Settings** views and a shared Cover Editor.
@@ -183,11 +185,11 @@ Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Fram
 
 - Layout follows the real text size; account picker for several Steam accounts; Reset can also remove art from other sources.
 
-All versions are in [CHANGELOG.md](CHANGELOG.md).
+All versions are in [CHANGELOG.md](docs/CHANGELOG.md).
 
 ## Acknowledgments
 
-Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community, and to the authors of [Pillow](https://python-pillow.org), [PySide6](https://doc.qt.io/qtforpython-6/), [PyInstaller](https://pyinstaller.org), [Inno Setup](https://jrsoftware.org/isinfo.php), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](THIRD_PARTY.md).
+Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community, and to the authors of [Pillow](https://python-pillow.org), [PySide6](https://doc.qt.io/qtforpython-6/), [PyInstaller](https://pyinstaller.org), [Inno Setup](https://jrsoftware.org/isinfo.php), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](docs/THIRD_PARTY.md).
 
 Game artwork belongs to its publishers and developers. Covers you generate contain that artwork: keep them for personal use.
 

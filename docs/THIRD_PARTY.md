@@ -9,6 +9,12 @@ This project is **not affiliated with, endorsed by, or sponsored by Valve Corpor
 
 Platform marks appear in the frame previews to mimic a physical box. The Steam frame contains the Steam mark; the Windows and Linux support badges have been removed from every frame header. The marks remain the property of their owners. If you are a rights holder and want something changed, open an issue.
 
+`assets/family_corner.png` is a green corner with a three-person icon drawn to resemble the Family icon in Steam's settings. It is original artwork and is not Valve's file.
+
+`assets/completion_overlay.png` holds the rosette and the "100% Complete" ribbon drawn on covers of games where every achievement is unlocked. The rosette is an original drawing inspired by the look of Steam's old achievement ribbon; it is not Valve's artwork. The file is built by `tools/build_completion_overlay.py` with the Nunito Sans font credited below.
+
+`assets/default_art.png` (source: `tools/src/default_art.svg`) is original artwork drawn for this project and released under the project's licence. It is not taken from any game and is only used to preview the case colour.
+
 ## Included files
 | File | Source | License |
 |---|---|---|
@@ -35,7 +41,9 @@ The Mega Drive and Genesis wordmarks are separate regional variants. Both are re
 ## Game artwork
 The retained historical preview (`assets/preview.png`) shows covers of a few games (SnowRunner, Coral Island, Clair Obscur: Expedition 33, Fallout 4 and V Rising) only to show what the app produces. That artwork, and the games' names and logos, belong to their publishers and developers. They are not covered by this project's license. If a rights holder objects, the image will be removed.
 
-Apart from that image, no game artwork is included. Covers are built on your own machine from the portrait images Steam serves for games in your own library. Generated covers contain publishers' artwork: use them for personal use and do not redistribute them.
+The completion overlay and default-art sources in `tools/src/` remain available for the Tkinter fallback.
+
+Apart from those images, no game artwork is included. Covers are built on your own machine from the portrait images Steam serves for games in your own library. Generated covers contain publishers' artwork: use them for personal use and do not redistribute them.
 
 ## Release builds
 The primary downloadable apps bundle Python (PSF License), Pillow (HPND License), and PySide6 / Qt. The PySide6 package declares `LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`; commercial licensing is also offered. The Qt libraries are dynamically loaded from the bundled files. The retained Tkinter fallback bundles Tcl/Tk (BSD-style license). Builds use PyInstaller (GPL-2.0 with a bootloader exception that allows distributing the built apps under other licenses). Consult the upstream [Qt for Python licensing notes](https://doc.qt.io/qtforpython-6/licenses.html) and bundled component notices when redistributing binaries.

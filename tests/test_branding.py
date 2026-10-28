@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Branding(unittest.TestCase):
-    def test_update_checker_removed_without_affecting_version(self):
-        self.assertFalse(hasattr(gui.App, "check_update"))
-        self.assertFalse(hasattr(steamcase, "check_for_update"))
+    def test_update_checker_available_without_affecting_version(self):
+        self.assertTrue(hasattr(gui.App, "check_update"))
+        self.assertTrue(hasattr(steamcase, "check_for_update"))
         self.assertTrue(isinstance(steamcase.APP_VERSION, str))
 
     def test_icon_formats_have_transparent_small_and_large_sizes(self):

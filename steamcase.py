@@ -14,12 +14,13 @@ Covers are built on your machine from the artwork Steam itself serves for your g
 
 The functions below are the engine. The CLI at the bottom and gui.py both use them.
 """
-import argparse, filecmp, hashlib, json, os, re, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request, uuid
+import argparse, completion, filecmp, functools, hashlib, json, os, re, shutil, socket, ssl, struct, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request, uuid
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageChops, ImageDraw, ImageFilter
+    from PIL.PngImagePlugin import PngInfo
 except ImportError:
-    Image = None
+    Image = ImageChops = ImageDraw = ImageFilter = PngInfo = None
 
 try:
     import certifi                      # a bundled set of trusted certificates (the packaged app's own Python may not find the system's)
@@ -32,6 +33,17 @@ for _s in (sys.stdout, sys.stderr):          # game names may hold non-ASCII; ne
 
 HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file__))   # _MEIPASS: inside a PyInstaller bundle
 FRAME = os.path.join(HERE, "assets", "frame.png")
+DEFAULT_ART = os.path.join(HERE, "assets", "default_art.png")     # original artwork, only used for the colour preview
+FAMILY_CORNER = os.path.join(HERE, "assets", "family_corner.png")    # green triangle and icon, laid over the frame for games from the Steam Family library
+COMPLETION_OVERLAY = os.path.join(HERE, "assets", "completion_overlay.png")    # rosette and "100% Complete" ribbon, laid over the covers of games with every achievement
+TREATMENTS = ("ribbon", "gold-case", "gold-border")      # how a 100% cover looks: the marks only, the marks on a gold case, the marks inside a gold border
+GOLD_HUE = 176                              # the gold of the colour swatches (#c89817), used whole for the "gold-case" treatment
+BORDER = 14                                 # width of the "gold-border" treatment's border, in cover pixels
+DONE_CHUNK = "steamcase-done"               # PNG note naming a cover's treatment; plain covers have none
+HUE_SWATCHES = (0, 42, 84, 134, 176, 276)           # ready-made case colours, as degrees of hue turned from the original blue (violet, magenta, red, orange, green)
+NEUTRAL_SWATCHES = (("Black", 0, 14), ("Graphite", 0, 34), ("Silver", 0, 78))    # ready-made greys: (name, colourfulness, brightness), hue does not matter
+FAMILY_COLOR = (46, 125, 50)                # #2e7d32: the white icon on it has a contrast of 5.1:1
+FAMILY_ICON_CONTRAST = 4.5                  # WCAG AA for normal text; the icon must never fall below it
 WINDOW = (14, 96, 586, 872)                 # art window inside frame.png (x0, y0, x1, y1)
 SIZE = (600, 900)
 STEAMID64_BASE = 76561197960265728
@@ -49,6 +61,8 @@ MAX_DOWNLOAD = 25 * 1024 * 1024          # a cover portrait is ~1 MB; anything b
 MAX_LIBRARY_FILE = 20 * 1024 * 1024      # a real library list is a few KB
 MAX_APPS = 100_000                       # a real library has at most a few thousand apps
 MAX_PIXELS = 30_000_000                  # portraits are ~1 MP; refuses decompression bombs
+MAX_PACKAGEINFO = 16 * 1024 * 1024       # Steam's own package list is a few hundred KB
+_PACKAGEINFO_MAGICS = (0x06565527, 0x06565528)
 TOOL_NAMES = re.compile(r"^(Proton|Steam Linux Runtime|Steamworks Common|Steam Controller Configs)", re.I)
 BACKUP_PREFIX = "grid_backup_"
 
@@ -58,6 +72,12 @@ AUTO_ART_HELP = (
     "Steam builds a stand-in from the wide header image: the title banner sits in the "
     "middle of a blurred, stretched copy of itself, with lots of empty space. "
     "Tick this to skip those games and keep Steam's default art for them."
+)
+FAMILY_HELP = (
+    "Games shared with you through Steam Family Sharing are in your library, but they are not on your own game list and are often not installed. "
+    "With this switch on, only games installed on this computer get covers, so shared games that are not installed are left out. "
+    "To include them, turn this off and load your game list: the app then finds the shared games in Steam's own files "
+    "and marks their covers with a green corner."
 )
 
 
@@ -192,6 +212,51 @@ def _read_version():
 APP_VERSION = _read_version()
 
 
+def version_tuple(tag):
+    m = _TAG.match(tag) if isinstance(tag, str) else None
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def check_for_update(current=None):
+    """Ask GitHub for the newest published release (pre-releases count). Returns
+    {"current", "latest", "newer", "url"}; "newer" is None when this build carries no version number (run from source).
+    The page address is built here from a tag that matched a strict pattern, never taken from the server's answer.
+    Nothing is downloaded or installed. Raises SteamcaseError when GitHub cannot be reached or answers nonsense."""
+    current = APP_VERSION if current is None else current
+    try:
+        data = json.loads(http_get("https://api.github.com/repos/%s/releases?per_page=30" % REPO, tries=2).decode("utf-8", "replace"))
+    except SteamcaseError:
+        raise
+    except (ValueError, RecursionError, MemoryError, UnicodeError):
+        raise SteamcaseError("GitHub's answer was not understood. Try again later.")
+    except Exception as e:
+        raise SteamcaseError("Could not reach GitHub: %s" % explain_error(e))
+    best = None
+    for r in data if isinstance(data, list) else []:
+        tag = r.get("tag_name") if isinstance(r, dict) and not r.get("draft") else None
+        v = version_tuple(tag)
+        if v and (best is None or v > best[0]):
+            best = (v, tag)
+    if not best:
+        raise SteamcaseError("No releases found on GitHub.")
+    mine = version_tuple(current)
+    return {"current": current, "latest": best[1], "newer": None if mine is None else best[0] > mine,
+            "url": "https://github.com/%s/releases/tag/%s" % (REPO, best[1])}
+
+
+def _replace(src, dst, tries=6):
+    """os.replace, retried a few times. On Windows it fails for a moment when something else (antivirus, a second copy of this app)
+    has the destination open; waiting a little almost always clears it."""
+    for n in range(tries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if n == tries - 1:
+                raise
+            time.sleep(0.05 * (n + 1))
+
+
 def _tmp(path, tag="tmp"):
     """A temp file name next to `path` that no other run can share."""
     return "%s.%d.%s.%s" % (path, os.getpid(), uuid.uuid4().hex[:8], tag)
@@ -299,17 +364,21 @@ def installed_games(steam):
     return games
 
 
-def owned_ids(json_path):
+def _load_library_json(json_path):
     path = os.path.expanduser(json_path)
     try:
         if os.path.getsize(path) > MAX_LIBRARY_FILE:
             raise SteamcaseError("That file is far too big to be your game list (over %d MB)." % (MAX_LIBRARY_FILE >> 20))
-        with open(path, encoding="utf-8-sig") as stream:
-            d = json.load(stream)
+        with open(path, encoding="utf-8-sig") as f:
+            return json.load(f)
     except SteamcaseError:
         raise
     except (OSError, ValueError, RecursionError, MemoryError, UnicodeError) as e:
         raise SteamcaseError("Could not read %s as a game list (%s)." % (os.path.basename(path), type(e).__name__))
+
+
+def owned_ids(json_path):
+    d = _load_library_json(json_path)
     ids = d.get("rgOwnedApps") if isinstance(d, dict) else None
     if isinstance(ids, list) and not ids and "rgOwnedPackages" in d:
         raise SteamcaseError("That file has no games in it. This usually means you were not logged in to Steam in your browser when you saved it. "
@@ -329,13 +398,119 @@ def owned_ids(json_path):
     return out
 
 
-def load_games(steam, library_json=None):
-    """{appid: name or None}: installed games, plus every owned app when library_json is given."""
+def owned_packages(json_path):
+    """Package ids from the library file ('rgOwnedPackages'). Free, bundled and old games belong to a package without being in 'rgOwnedApps'.
+    [] when the file has none."""
+    d = _load_library_json(json_path)
+    ids = d.get("rgOwnedPackages") if isinstance(d, dict) else None
+    if not isinstance(ids, list):
+        return []
+    return [i for i in ids if type(i) is int and 0 <= i < 2 ** 32][:MAX_APPS]
+
+
+def _read_binary_kv(data, pos, depth=0):
+    """One Valve binary key-value tree starting at data[pos]: (dict, position after it). Raises on anything it does not understand."""
+    if depth > 8:
+        raise ValueError("tree too deep")
+    out = {}
+    while True:
+        kind = data[pos]
+        pos += 1
+        if kind == 8:
+            return out, pos
+        end = data.index(b"\0", pos)
+        key = data[pos:end].decode("utf-8", "replace")
+        pos = end + 1
+        if kind == 0:
+            out[key], pos = _read_binary_kv(data, pos, depth + 1)
+        elif kind == 1:
+            end = data.index(b"\0", pos)
+            out[key] = data[pos:end].decode("utf-8", "replace")
+            pos = end + 1
+        elif kind in (2, 4, 5):
+            out[key] = struct.unpack_from("<i", data, pos)[0]
+            pos += 4
+        elif kind in (3, 6):
+            out[key] = struct.unpack_from("<I" if kind == 6 else "<f", data, pos)[0]
+            pos += 4
+        elif kind in (7, 10):
+            out[key] = struct.unpack_from("<Q", data, pos)[0]
+            pos += 8
+        else:
+            raise ValueError("unknown value type %d" % kind)
+
+
+def package_apps(steam, package_ids):
+    """Every app id inside the given packages, read from Steam's own appcache/packageinfo.vdf.
+    None when that file is missing, not in a layout we know, or not about these packages (fewer than 90% of them are in it, as when Steam is
+    logged into another account): callers then treat ownership as unknown."""
+    path = os.path.join(steam, "appcache", "packageinfo.vdf")
+    wanted = set(package_ids)
+    try:
+        if os.path.getsize(path) > MAX_PACKAGEINFO:
+            return None
+        with open(path, "rb") as f:
+            data = f.read()
+        magic = struct.unpack_from("<I", data, 0)[0]
+        if magic not in _PACKAGEINFO_MAGICS:
+            return None
+        pos, apps, seen = 8, set(), 0              # magic and universe come first, then one entry per package
+        while True:
+            pid = struct.unpack_from("<I", data, pos)[0]
+            pos += 4
+            if pid == 0xFFFFFFFF:
+                return apps if seen >= 0.9 * len(wanted) else None
+            pos += 24 + (8 if magic == 0x06565528 else 0)        # hash (20), change number (4), and a token (8) in the newer header
+            tree, pos = _read_binary_kv(data, pos)
+            entry = tree.get(str(pid))
+            if pid in wanted and isinstance(entry, dict):
+                seen += 1
+                ids = entry.get("appids")
+                if isinstance(ids, dict):
+                    apps.update(v for v in ids.values() if type(v) is int and 0 < v < 2 ** 32)
+    except (OSError, ValueError, struct.error, IndexError, RecursionError, MemoryError):
+        return None
+
+
+def find_family(steam, owned, package_ids):
+    """App ids that are in your Steam library through Family Sharing: Steam keeps art for them (appcache/librarycache) or they are installed,
+    but they are neither in your owned apps nor inside one of your owned packages (free, bundled and old games are, so they are yours).
+    Empty when ownership cannot be told (no package data): then nothing is guessed."""
+    if not package_ids:
+        return set()
+    mine = package_apps(steam, package_ids)
+    if mine is None:
+        return set()
+    found = set(installed_games(steam))
+    cache = os.path.join(steam, "appcache", "librarycache")
+    try:
+        for n in os.listdir(cache):
+            p = os.path.join(cache, n)
+            if re.fullmatch(r"[0-9]{1,10}", n) and os.path.isdir(p) and not os.path.islink(p):
+                found.add(int(n))
+    except OSError:
+        pass
+    return set(sorted(i for i in found - mine - set(owned) if 0 < i < 2 ** 32)[:MAX_APPS])
+
+
+def load_library(steam, library_json=None):
+    """(games, family): games is {appid: name or None} for installed games, every owned app when library_json is given, and your family games;
+    family is the set of those that came from the Steam Family library (always empty without library_json: ownership is unknown then)."""
     games = installed_games(steam)
+    family = set()
     if library_json:
-        for i in owned_ids(library_json):
+        owned = owned_ids(library_json)
+        for i in owned:
             games.setdefault(i, None)
-    return games
+        family = find_family(steam, owned, owned_packages(library_json))
+        for i in family:
+            games.setdefault(i, None)
+    return games, family
+
+
+def load_games(steam, library_json=None):
+    """{appid: name or None}: installed games, plus every owned app (and family game) when library_json is given."""
+    return load_library(steam, library_json)[0]
 
 
 def pick_account(steam, forced=None):
@@ -390,6 +565,8 @@ def grid_dir(steam, user=None):
 def _background_creationflags():
     """Keep Windows console tools from opening a window when called by the GUI."""
     return subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+# On Windows a windowed app has no console, so every console program it starts (tasklist) would flash a black window and take the focus.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)         # 0 on Linux and macOS, where the attribute does not exist
 
 
 def steam_running():
@@ -536,13 +713,66 @@ def list_games(games, log=None, include_unknown=False):
 
 
 # ---------- drawing ----------
-def build_cover(portrait_path, out_path, frame):
-    if Image is None:
-        raise SteamcaseError("Pillow is missing. Install it with:  python -m pip install pillow")
-    with Image.open(portrait_path, formats=["PNG", "JPEG", "WEBP"]) as im:        # never let Pillow guess (EPS, TIFF, ... have a worse track record)
-        if im.width * im.height > MAX_PIXELS:                  # header check only; nothing is decoded yet
-            raise SteamcaseError("Image is too large to be a game portrait (%dx%d)." % im.size)
-        art = im.convert("RGBA")
+def hue_shift(hue):
+    """How far `hue` degrees turns Pillow's hue band (0..255). Neighbouring whole degrees can share a step (1 and 2 do): the covers are then identical."""
+    return round((hue % 360) * 256 / 360) % 256
+
+
+def tone_key(hue, sat=100, val=100):
+    """What decides how a case looks: (hue step, sat, val), tone clamped to 0..100. Without colour or without light the hue shows nothing, so it counts as 0."""
+    sat, val = min(max(sat, 0), 100), min(max(val, 0), 100)
+    return (0 if sat == 0 or val == 0 else hue_shift(hue), sat, val)
+
+
+def same_colour(a, b):
+    """True if two case colours, (hue, sat, val) or None when unknown, look the same."""
+    return a is not None and b is not None and tone_key(*a) == tone_key(*b)
+
+
+def recolor_frame(frame, hue, sat=100, val=100):
+    """The frame with its hue turned by `hue` degrees, then its colourfulness and brightness scaled to `sat` and `val` (0 to 100, 100 = as drawn).
+    Brightness only changes the coloured parts (weighted by their own saturation), so the white logo and text and the transparency stay; at 0 degrees,
+    100 and 100 the frame itself comes back (the original blue, byte for byte). Colourfulness 0 gives greys: dark ones are black, light ones silver."""
+    shift = hue_shift(hue)
+    sat, val = min(max(sat, 0), 100), min(max(val, 0), 100)
+    if not shift and sat == 100 and val == 100:
+        return frame
+    r, g, b, a = frame.split()
+    h, s, v = Image.merge("RGB", (r, g, b)).convert("HSV").split()
+    if shift:
+        h = h.point(lambda x: (x + shift) % 256)
+    weight = [min(1.0, x / 255 / 0.02) for x in range(256)]            # 0 on the pure white parts, 1 on anything with a trace of colour
+    new_s = s.point([round(x * sat / 100) for x in range(256)])               # white parts have none to lose
+    factor = s.point([round(255 * (1 - w * (1 - val / 100))) for w in weight])
+    v = ImageChops.multiply(v, factor)
+    return Image.merge("RGBA", (*Image.merge("HSV", (h, new_s, v)).convert("RGB").split(), a))
+
+
+def load_frame(hue=0, family=False, *, sat=100, val=100):
+    """The case frame in the wanted colour and tone; with family=True the green corner of the Steam Family library is laid over it (never recoloured)."""
+    frame = recolor_frame(Image.open(FRAME).convert("RGBA"), hue, sat, val)
+    if family:
+        frame = Image.alpha_composite(frame, Image.open(FAMILY_CORNER).convert("RGBA"))
+    return frame
+
+
+def case_color(hue, sat=100, val=100):
+    """'#rrggbb' of the case's middle colour (the original is #1636c8) turned by `hue` degrees and toned by `sat` and `val`: for painting swatches and the colour sliders."""
+    sat, val = min(max(sat, 0), 100), min(max(val, 0), 100)
+    return _case_color(0 if sat == 0 or val == 0 else hue % 360, sat, val)           # the hue shows nothing without colour or light: one entry for all
+
+
+@functools.lru_cache(maxsize=8192)                                  # the sliders ask for a few hundred colours per repaint
+def _case_color(hue, sat, val):
+    return "#%02x%02x%02x" % recolor_frame(Image.new("RGBA", (1, 1), (0x16, 0x36, 0xc8, 255)), hue, sat, val).getpixel((0, 0))[:3]
+
+
+HUE_CHUNK = "steamcase-hue"
+TONE_CHUNK = "steamcase-tone"                 # "<sat> <val>"; covers without it are in full tone
+
+
+def _compose(art, frame):
+    """A portrait scaled to cover the frame's art window (centre-cropped), with the frame on top. Real covers and the window's preview both use this."""
     x0, y0, x1, y1 = WINDOW
     ww, wh = x1 - x0, y1 - y0
     s = max(ww / art.width, wh / art.height)                      # scale to cover, then center-crop
@@ -551,38 +781,178 @@ def build_cover(portrait_path, out_path, frame):
     art = art.crop((cx, cy, cx + ww, cy + wh))
     canvas = Image.new("RGBA", SIZE, (0, 0, 0, 0))
     canvas.paste(art, (x0, y0))
-    part = _tmp(out_path, "part")                  # write aside, then rename: a crash never leaves a half-written cover
+    return Image.alpha_composite(canvas, frame)
+
+
+def preview_cover(hue=0, family=False, *, sat=100, val=100, treatment=None):
+    """What a cover looks like in this case colour and tone, made from the default art that ships with the app (the window shows it before any game's art exists).
+    With a `treatment` (one of TREATMENTS) it shows the cover of a game with every achievement unlocked."""
+    hue, sat, val = treatment_colour(treatment, (hue, sat, val))
+    with Image.open(DEFAULT_ART) as im:
+        return finish_treatment(_compose(im.convert("RGBA"), load_frame(hue, family, sat=sat, val=val)), treatment)
+
+
+def treatment_colour(treatment, colour):
+    """The case colour (hue, sat, val) a cover is built in: gold for the "gold-case" treatment, the user's `colour` otherwise."""
+    return (GOLD_HUE, 100, 100) if treatment == "gold-case" else colour
+
+
+@functools.lru_cache(maxsize=1)
+def _completion_overlay():
+    with Image.open(COMPLETION_OVERLAY) as im:
+        return im.convert("RGBA")
+
+
+@functools.lru_cache(maxsize=1)
+def _gold_border():
+    """The rounded gold plate of the "gold-border" treatment: a vertical gradient, its corners rounded to follow the case's (drawn at 3x for smooth edges)."""
+    w, h, k = SIZE[0], SIZE[1], 3
+    top, bottom = (0xff, 0xe2, 0x78), (0xc4, 0x88, 0x16)
+    column = Image.new("RGB", (1, h))
+    for y in range(h):
+        t = y / (h - 1)
+        column.putpixel((0, y), tuple(round(top[i] * (1 - t) + bottom[i] * t) for i in range(3)))
+    plate = column.resize(SIZE).convert("RGBA")
+    mask = Image.new("L", (w * k, h * k), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w * k - 1, h * k - 1], radius=(24 + BORDER) * k, fill=255)
+    plate.putalpha(mask.resize(SIZE, Image.LANCZOS))
+    return plate
+
+
+def finish_treatment(cover, treatment):
+    """`cover` (the finished 600 x 900 composition) with the marks of a 100% game: the rosette over the platform badges and the
+    ribbon at the bottom, kept inside the case's own outline. For "gold-border" the whole cover is then shrunk by BORDER pixels
+    on each side and set inside a gold border, so the marks stay on the art. No treatment: `cover` itself."""
+    if treatment is None:
+        return cover
+    marks = _completion_overlay().copy()
+    marks.putalpha(ImageChops.multiply(marks.getchannel("A"), cover.getchannel("A")))     # nothing reaches past the rounded case
+    done = Image.alpha_composite(cover, marks)
+    if treatment == "gold-border":
+        plate = _gold_border().copy()
+        plate.alpha_composite(done.resize((SIZE[0] - 2 * BORDER, SIZE[1] - 2 * BORDER), Image.LANCZOS), (BORDER, BORDER))
+        done = plate
+    return done
+
+
+def cover_colour(path):
+    """The case colour (hue, sat, val) a cover was made in, read from its PNG header without decoding the picture.
+    Covers made before colours existed have no hue note and count as 0; those without a tone note count as full tone (100, 100).
+    None if this is not a readable PNG, or if a note is not what we write (the hue a whole number from 0 to 359, the tone two whole
+    numbers from 0 to 100 split by a space): the cover is then rebuilt rather than taken for blue."""
     try:
-        Image.alpha_composite(canvas, frame).save(part, format="PNG", optimize=True)
-        for attempt in range(6):
-            try:
-                os.replace(part, out_path)
-                break
-            except PermissionError as exc:
-                # On Windows another reader can briefly hold the destination open.
-                # Keep the atomic replacement, but wait for that sharing lock to pass.
-                if not sys.platform.startswith("win") or getattr(exc, "winerror", None) not in (5, 32, 33) or attempt == 5:
-                    raise
-                time.sleep(0.04 * (attempt + 1))
-    finally:
-        if os.path.exists(part):
-            os.remove(part)
+        if os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) > MAX_DOWNLOAD:
+            return None
+        with Image.open(path, formats=["PNG"]) as im:
+            return _noted_colour(im.info)
+    except Exception:
+        return None
+
+
+def _noted_colour(info):
+    """The case colour (hue, sat, val) the notes in a PNG's `info` give (see cover_colour), or None if a note is garbled."""
+    hue, tone = info.get(HUE_CHUNK), info.get(TONE_CHUNK)
+    if hue is None:
+        hue = 0
+    elif isinstance(hue, str) and re.fullmatch(r"0|[1-9][0-9]{0,2}", hue) and int(hue) < 360:
+        hue = int(hue)
+    else:
+        return None
+    if tone is None:
+        return (hue, 100, 100)
+    m = re.fullmatch(r"(0|[1-9][0-9]?|100) (0|[1-9][0-9]?|100)", tone) if isinstance(tone, str) else None
+    return (hue, int(m.group(1)), int(m.group(2))) if m else None
+
+
+def cover_hue(path):
+    """The case hue of a cover (see cover_colour), or None when unknown."""
+    colour = cover_colour(path)
+    return colour[0] if colour else None
+
+
+def cover_treatment(path):
+    """The treatment (one of TREATMENTS) a cover was made with, read from its PNG header without decoding the picture; None for a plain cover.
+    False if this is not a readable PNG or the note is not exactly one we write: the cover is then rebuilt."""
+    try:
+        if os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) > MAX_DOWNLOAD:
+            return False
+        with Image.open(path, formats=["PNG"]) as im:
+            done = im.info.get(DONE_CHUNK)
+    except Exception:
+        return False
+    return done if done is None or done in TREATMENTS else False
+
+
+def build_cover(portrait_path, out_path, frame, hue=0, *, sat=100, val=100, treatment=None):
+    """Write the cover of one portrait into `out_path`, with its colour notes and, for a 100% game, its `treatment` and treatment note.
+    `frame` is already in the colour the cover is made in (for "gold-case": the gold frame, with hue, sat, val saying gold)."""
+    if Image is None:
+        raise SteamcaseError("Pillow is missing. Install it with:  python -m pip install pillow")
+    with Image.open(portrait_path, formats=["PNG", "JPEG", "WEBP"]) as im:        # never let Pillow guess (EPS, TIFF, ... have a worse track record)
+        if im.width * im.height > MAX_PIXELS:                  # header check only; nothing is decoded yet
+            raise SteamcaseError("Image is too large to be a game portrait (%dx%d)." % im.size)
+        art = im.convert("RGBA")
+    cover = finish_treatment(_compose(art, frame), treatment)
+    part = _tmp(out_path, "part")                  # write aside, then rename: a crash never leaves a half-written cover
+    note = PngInfo()
+    note.add_text(HUE_CHUNK, str(hue % 360))                   # lets make_covers tell what colour an existing cover is without decoding it
+    note.add_text(TONE_CHUNK, "%d %d" % (min(max(sat, 0), 100), min(max(val, 0), 100)))
+    if treatment is not None:
+        note.add_text(DONE_CHUNK, treatment)                   # plain covers carry no note, as before treatments existed
+    cover.save(part, format="PNG", optimize=True, pnginfo=note)
+    _replace(part, out_path)
 
 
 # ---------- make ----------
-def make_covers(games, out, only=None, force=False, skip_auto_art=False, progress=None, cancelled=None, log=None):
+def _wanted_look(appid, path, colour, completed, treatment):
+    """(treatment, case colour) the cover of `appid` at `path` should have (see make_covers). Without a page (`completed` None)
+    a cover keeps the treatment it was made with; a garbled note counts as none, so the cover is rebuilt plain."""
+    if completed is not None:
+        target = treatment if appid in completed else None
+    else:
+        target = cover_treatment(path) or None
+    return target, treatment_colour(target, colour)
+
+
+def make_covers(games, out, only=None, force=False, skip_auto_art=False, progress=None, cancelled=None, log=None, family=None, hue=0, sat=100, val=100,
+                completed=None, treatment=None):
     """Build a cover per game into `out`.
 
     progress(done, total, appid, name, status)  status: ok | exists | skipped | noart | failed
     cancelled() -> True stops early.
+    family: set of appids that come from the Steam Family library; those covers are drawn with the green-corner frame.
+    hue, sat, val: the case colour: degrees to turn it from the original blue (0), then its colourfulness and brightness (0 to 100, 100 = as drawn).
+    completed: set of appids with every achievement unlocked (from the saved games page), or None when no page is loaded.
+    treatment: one of TREATMENTS for those games, or None ("No special case": they get plain covers).
+    Without a page each existing cover keeps the treatment it was made with. A "gold-case" cover is made in gold whatever the colour asked.
+    A cover that exists in another colour or with another treatment is rebuilt, one that already looks right is kept
+    (the hue means nothing at 0 sat or 0 val). Apps in `completed` that are not in `games` are ignored.
     progress counts only items that can become a cover (DLC, soundtracks and tools are not counted).
     Returns {"ok", "skipped", "not_games" (DLC, tools...), "unlisted" (apps Steam no longer lists), "missing": [(appid, name)] (Steam has no art),
-    "failed": [(appid, name)] (download problem), "cancelled", "files": [cover paths of this run]}.
+    "failed": [(appid, name)] (download problem), "cancelled", "files": [cover paths of this run],
+    "family": how many covers were drawn with the family frame in this run (an existing plain cover is kept unless force is set),
+    "completed": how many of "files" carry a treatment, kept ones included}.
     """
     if Image is None:
         raise SteamcaseError("Pillow is missing. Install it with:  python -m pip install pillow")
+    if treatment is not None and treatment not in TREATMENTS:
+        raise ValueError("unknown treatment: %r" % (treatment,))        # a note nobody can read back would have the cover rebuilt on every run
     os.makedirs(out, exist_ok=True)
-    frame = Image.open(FRAME).convert("RGBA")
+    hue %= 360
+    sat, val = min(max(sat, 0), 100), min(max(val, 0), 100)
+    family = set(family or ())
+    frames = {}                                 # (look of the colour, family?) -> frame: each one is made once per run
+
+    def frame_for(colour, is_family):
+        key = (tone_key(*colour), is_family)
+        if key not in frames:
+            frames[key] = load_frame(colour[0], is_family, sat=colour[1], val=colour[2])
+        return frames[key]
+
+    frame_for((hue, sat, val), False)           # a missing frame.png fails here, before any download
+    if treatment is not None or completed is None:
+        _completion_overlay()                   # so does a missing overlay: otherwise every 100% cover would count as a failed download
+
     ids = sorted(games)
     if only:
         ids = [i for i in ids if i in set(only)]
@@ -593,7 +963,7 @@ def make_covers(games, out, only=None, force=False, skip_auto_art=False, progres
     if ids and not info and not (cancelled and cancelled()):
         why = explain_error(errs[-1]) if errs else "no answer, check your internet connection"
         raise SteamcaseError("Could not reach Steam's servers: %s." % why.rstrip("."))
-    res = {"ok": 0, "skipped": 0, "not_games": 0, "unlisted": 0, "missing": [], "failed": [], "cancelled": False, "files": []}
+    res = {"ok": 0, "skipped": 0, "not_games": 0, "unlisted": 0, "missing": [], "failed": [], "cancelled": False, "files": [], "family": 0, "completed": 0}
     todo = []                                   # only items that can become a cover count towards the progress
     for appid in ids:
         it = info.get(appid) or {}
@@ -629,8 +999,10 @@ def make_covers(games, out, only=None, force=False, skip_auto_art=False, progres
             res["skipped"] += 1
             report(n, appid, name, "skipped")
             continue
-        if os.path.exists(dest) and not force:
+        target, colour = _wanted_look(appid, dest, (hue, sat, val), completed, treatment)
+        if os.path.exists(dest) and not force and same_colour(cover_colour(dest), colour) and cover_treatment(dest) == target:
             res["ok"] += 1
+            res["completed"] += target is not None
             res["files"].append(dest)
             report(n, appid, name, "exists")
             continue
@@ -656,8 +1028,11 @@ def make_covers(games, out, only=None, force=False, skip_auto_art=False, progres
             report(n, appid, name, "failed" if neterr else "noart")
             continue
         try:
-            build_cover(tmp, dest, frame)
+            is_family = appid in family
+            build_cover(tmp, dest, frame_for(colour, is_family), colour[0], sat=colour[1], val=colour[2], treatment=target)
             res["ok"] += 1
+            res["family"] += is_family
+            res["completed"] += target is not None
             res["files"].append(dest)
             report(n, appid, name, "ok")
         except Exception as e:
@@ -672,12 +1047,54 @@ def make_covers(games, out, only=None, force=False, skip_auto_art=False, progres
 
 
 # ---------- apply / backup / restore ----------
+def covers_in_other_look(covers_dir, hue, sat=100, val=100, completed=None, treatment=None):
+    """True if make_covers with this colour, `completed` and `treatment` would rebuild a cover already in the folder (stops at the first one):
+    one in another case colour (a "gold-case" cover is compared as gold) or with another treatment. Covers whose colour notes are unreadable are not counted."""
+    try:
+        names = os.listdir(covers_dir)
+    except OSError:
+        return False
+    for n in names:
+        appid = appid_of(n)
+        if n.lower().endswith(".png") and appid is not None:
+            path = os.path.join(covers_dir, n)
+            c = cover_colour(path)
+            if c is None:
+                continue
+            target, colour = _wanted_look(int(appid), path, (hue, sat, val), completed, treatment)       # appid_of gives text; `completed` holds numbers
+            if not same_colour(c, colour) or cover_treatment(path) != target:
+                return True
+    return False
+
+
+def covers_in_other_colour(covers_dir, hue, sat=100, val=100):
+    """True if the covers folder already holds a cover made in a different case colour than (`hue`, `sat`, `val`) (stops at the first one).
+    No page loaded: each cover keeps its treatment, so a "gold-case" cover stays gold and is not counted (see covers_in_other_look)."""
+    return covers_in_other_look(covers_dir, hue, sat, val)
+
+
+def existing_cover_colour(covers_dir):
+    """The case colour (hue, sat, val) of the covers already in the folder (that of the first one by name), or None when there are none.
+    "gold-case" covers are skipped: their notes say gold, not the colour the user chose."""
+    try:
+        names = sorted(os.listdir(covers_dir))
+    except OSError:
+        return None
+    for n in names:
+        if n.lower().endswith(".png") and appid_of(n) is not None:
+            path = os.path.join(covers_dir, n)
+            c = cover_colour(path)
+            if c is not None and cover_treatment(path) != "gold-case":
+                return c
+    return None
+
+
 def _safe_copy(src, dst):
     """Copy src to dst atomically. If dst is a symlink, the link itself is replaced, never the file it points to."""
     tmp = _tmp(dst)
     try:
         shutil.copy2(src, tmp)
-        os.replace(tmp, dst)
+        _replace(tmp, dst)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -797,23 +1214,95 @@ _LEGACY_FRAME_REGION_HASHES = (
 )
 
 
+def _shape(strip):
+    """Saturation, brightness and transparency of a strip of a cover (for covers without a tone note). The hue is left out on purpose:
+    a cover from before tones existed is in full tone, and turning only its hue still leaves it ours."""
+    r, g, b, a = strip.split()
+    _, s, v = Image.merge("RGB", (r, g, b)).convert("HSV").split()
+    return s, v, a
+
+
 def _frame_regions():
-    """The parts of a cover that are pure frame (banner on top, lip at the bottom), from frame.png."""
+    """The parts of a cover that are pure frame (banner on top, lip at the bottom), from frame.png and from the family frame.
+    Each reference is (shape, mask): mask is None, or marks the pixels worth comparing (the family corner's soft edge is left out: it
+    blends the green with the banner, so its saturation depends on the colour the case was turned to). The mask comes last on its own."""
     global _frame_ref
     if _frame_ref is None:
-        fr = Image.open(FRAME).convert("RGBA")
         top, bot = (0, 0, SIZE[0], WINDOW[1]), (0, WINDOW[3], SIZE[0], SIZE[1])
-        _frame_ref = (top, bot, fr.crop(top).tobytes(), fr.crop(bot).tobytes())
+        plain, family = load_frame(0), load_frame(0, True)          # the family frame differs from the plain one only in the corner triangle
+        edge = Image.open(FAMILY_CORNER).convert("RGBA").getchannel("A").crop(top).point(lambda a: 255 if a in (0, 255) else 0)
+        _frame_ref = (top, bot, ((_shape(plain.crop(top)), None), (_shape(family.crop(top)), edge)), (_shape(plain.crop(bot)), None), edge)
     return _frame_ref
 
 
+def _same_shape(a, ref):
+    """Same transparency exactly, and saturation and brightness within 2 levels (turning the hue moves them by at most 1). Hue is not
+    compared, so this only holds for covers in full tone: a grey case has other saturation and brightness and never passes."""
+    (s, v, alpha), mask = ref
+    if a[2].tobytes() != alpha.tobytes():
+        return False
+    for x, y in ((a[0], s), (a[1], v)):
+        diff = ImageChops.difference(x, y)
+        if mask is not None:
+            diff = ImageChops.darker(diff, mask)
+        if diff.getextrema()[1] > 2:
+            return False
+    return True
+
+
+@functools.lru_cache(maxsize=16)                                    # about 0.76 MB an entry, and the tone comes from a file's note
+def _tone_strips(key):
+    """_expected_strips for one tone_key: covers that look the same share one set of strips."""
+    step, sat, val = key                                            # step * 360 / 256 degrees turns the hue by exactly `step` again
+    top, bot, _, _, edge = _frame_regions()
+    blank = Image.new("RGBA", SIZE, (0, 0, 0, 0))
+    plain, family = (Image.alpha_composite(blank, load_frame(step * 360 / 256, f, sat=sat, val=val)) for f in (False, True))   # as _compose lays it down
+    return ((plain.crop(top), None), (family.crop(top), Image.merge("RGBA", (edge,) * 4))), (plain.crop(bot), None)
+
+
+def _expected_strips(hue, sat, val):
+    """The banner (plain, and family with the corner's soft-edge mask) and the bottom strip exactly as a cover in this colour and tone has them."""
+    return _tone_strips(tone_key(hue, sat, val))
+
+
+def _same_pixels(strip, ref):
+    """Every RGBA channel within 2 levels of the reference strip, outside the masked-off pixels."""
+    want, mask = ref
+    diff = ImageChops.difference(strip, want)
+    if mask is not None:
+        diff = ImageChops.darker(diff, mask)
+    return max(hi for _, hi in diff.getextrema()) <= 2
+
+
+@functools.lru_cache(maxsize=16)                                    # about 2.7 MB an entry; a library uses one or two colours, each plain and family
+def _treated_reference(key, family):
+    """(expected, mask) for a treated cover: key is (tone_key, treatment). The cover is made twice, from flat black and from flat white
+    art, through the same steps as build_cover; the mask is 255 where both agree within 2 on every channel (frame, rosette, ribbon,
+    border: nothing the game's art reaches) and 0 elsewhere, then pulled back 3 pixels from the art: the gold border's shrink (Lanczos)
+    lets detailed art ring that far past where flat art reaches. Expected is halfway between the two, so real art lands within 1 of it."""
+    (step, sat, val), treatment = key                               # step * 360 / 256 degrees turns the hue by exactly `step` again
+    frame = load_frame(step * 360 / 256, family, sat=sat, val=val)
+    black, white = (finish_treatment(_compose(Image.new("RGBA", SIZE, (c, c, c, 255)), frame), treatment) for c in (0, 255))
+    widest = functools.reduce(ImageChops.lighter, ImageChops.difference(black, white).split())
+    return Image.blend(black, white, 0.5), widest.point(lambda d: 255 if d <= 2 else 0).filter(ImageFilter.MinFilter(7))
+
+
+def _same_treated(im, key, family):
+    """True if `im` matches the treated cover for `key` within 2 levels on every pixel the art does not reach (see _treated_reference).
+    A mask that covers less than 15% of the canvas leaves too little to tell our covers from others: then never ours."""
+    want, mask = _treated_reference(key, family)
+    if mask.histogram()[255] < 0.15 * SIZE[0] * SIZE[1]:
+        return False
+    return _same_pixels(im, (want, Image.merge("RGBA", (mask,) * 4)))
+
+
 def _known_frame_hashes():
-    """Exact header/lip signatures for every shipped normal and platinum frame."""
+    """Exact signatures for the 29 platform frames, with or without Platinum."""
     global _known_frame_ref
     if _known_frame_ref is None:
         from platform_catalog import load_catalog
         from platinum_frame import apply
-        top, bot, _ref_top, _ref_bot = _frame_regions()
+        top, bot, *_ = _frame_regions()
         found = {_LEGACY_FRAME_REGION_HASHES}
         for platform in load_catalog()["platforms"]:
             path = os.path.join(HERE, "assets", "frames", platform["id"] + ".png")
@@ -830,20 +1319,43 @@ _known_frame_ref = None
 
 
 def is_steamcase_cover(path):
-    """Recognize current and legacy Steam covers by their exact frame regions."""
+    """True if this file is one of our covers: a 600x900 PNG whose banner and bottom edge are those of frame.png (or of the family frame).
+    A cover with a treatment note (a 100% game) must name exactly one of TREATMENTS, have colour notes we write, and match the cover
+    regenerated in that colour, tone and treatment on every pixel the game's art does not reach (frame, rosette, ribbon, border).
+    Otherwise, a cover with a tone note must match, pixel for pixel, the frame regenerated in the colour and tone its notes give; one
+    without (made before tones existed) must have the shape of the frame in full tone, whatever its hue (its notes are not read). Next to
+    a tone or treatment note, a garbled note, or notes the pixels do not match, mean not ours. Art you set yourself never matches, so it
+    is never mistaken for ours."""
+
     try:
         if Image is None or os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) > MAX_DOWNLOAD:
             return False
-        top, bot, ref_top, ref_bot = _frame_regions()
+        top, bot, ref_tops, ref_bot, _ = _frame_regions()
         with Image.open(path, formats=["PNG"]) as im:
             if im.size != SIZE:
                 return False
+            toned, colour, done = TONE_CHUNK in im.info, _noted_colour(im.info), im.info.get(DONE_CHUNK)
             im = im.convert("RGBA")
         candidate_top, candidate_bot = im.crop(top).tobytes(), im.crop(bot).tobytes()
-        if candidate_top == ref_top and candidate_bot == ref_bot:
+        if (done is None and colour == (0, 100, 100) and
+                (hashlib.sha256(candidate_top).hexdigest(),
+                 hashlib.sha256(candidate_bot).hexdigest()) in _known_frame_hashes()):
             return True
-        return (hashlib.sha256(candidate_top).hexdigest(),
-                hashlib.sha256(candidate_bot).hexdigest()) in _known_frame_hashes()
+        if done is not None:
+            if done not in TREATMENTS or colour is None:
+                return False
+            if done == "gold-case" and tone_key(*colour) != tone_key(GOLD_HUE, 100, 100):
+                return False                                    # we always write a gold case with gold notes (gold-case and the ribbon at hue 176 look the same, so those two notes swapped cannot be told; harmless)
+            key = (tone_key(*treatment_colour(done, colour)), done)
+            return any(_same_treated(im, key, family) for family in (False, True))
+        if toned:
+            if colour is None:
+                return False
+            tops, bottom = _expected_strips(*colour)
+            banner = im.crop(top)
+            return any(_same_pixels(banner, ref) for ref in tops) and _same_pixels(im.crop(bot), bottom)
+        banner = _shape(im.crop(top))
+        return any(_same_shape(banner, ref) for ref in ref_tops) and _same_shape(_shape(im.crop(bot)), ref_bot)
     except Exception:
         return False
 
@@ -1239,27 +1751,71 @@ def restore_backup(steam, backup_dir, user=None, keep=False):
 # ---------- command line ----------
 def _collect(args):
     steam = steam_dir(args.steam_dir)
-    return steam, load_games(steam, args.library)
+    games, family = load_library(steam, args.library)
+    return steam, games, family
 
 
 def cmd_list(args):
-    steam, games = _collect(args)
+    steam, games, family = _collect(args)
     print("Steam folder:", steam)
     rows = list_games(games, print)
     for appid, name in rows:
-        print(appid, name)
+        print("%d %s%s" % (appid, name, "  (family)" if appid in family else ""))
     print("\n%d games%s" % (len(rows), "" if args.library else "  (installed only; add --library userdata.json for your whole library)"))
+    shared = sum(1 for appid, _ in rows if appid in family)
+    if shared:
+        print("%d from your Steam Family library" % shared)
+
+
+def _hue_arg(text):
+    if not re.fullmatch(r"[0-9]{1,3}", text) or int(text) > 359:
+        raise argparse.ArgumentTypeError("%r is not a whole number from 0 to 359" % text)
+    return int(text)
+
+
+def _percent_arg(text):
+    if not re.fullmatch(r"[0-9]{1,3}", text) or int(text) > 100:
+        raise argparse.ArgumentTypeError("%r is not a whole number from 0 to 100" % text)
+    return int(text)
+
+
+def _chosen_colour(args):
+    """The case colour (hue, sat, val) to build: each part is the option if given, else that of the covers already in the folder, else the original."""
+    found = existing_cover_colour(os.path.abspath(args.out)) or (0, 100, 100)
+    return tuple(found[i] if o is None else o for i, o in enumerate((args.hue, args.saturation, args.brightness)))
+
+
+def _completion_args(args):
+    """(completed, treatment) for make_covers from --games-page and --completed-style: (None, None) when neither is given (covers stay as they are).
+    A page alone means the ribbon; "none" removes the treatments, with a page or without, and does not read the page. Exits with status 2 and the reason if the page cannot be used."""
+    if args.games_page is None and args.completed_style is None:
+        return None, None
+    style = args.completed_style or "ribbon"
+    treatment = None if style == "none" else style
+    if args.games_page is None or treatment is None:        # "none" needs no page: a bad one must not stop you removing the highlights
+        return set(), treatment
+    try:
+        completed = completion.completed_apps(completion.read_games_page(os.path.expanduser(args.games_page)))
+    except completion.PageError as e:
+        print(e, file=sys.stderr)
+        sys.exit(2)
+    return completed, treatment
 
 
 def cmd_make(args):
-    steam, games = _collect(args)
+    completed, treatment = _completion_args(args)           # first: a bad page fails before the library is loaded
+    steam, games, family = _collect(args)
+    hue, sat, val = _chosen_colour(args)
 
     def progress(done, total, appid, name, status):
         if status == "ok":
             print("ok  ", appid, name)
 
-    res = make_covers(games, os.path.abspath(args.out), args.only, args.force, args.skip_auto_art, progress, log=print)
-    print("\n%d covers in %s | %d skipped (DLC/tools/non-games) | %d without portrait art" % (res["ok"], os.path.abspath(args.out), res["skipped"], len(res["missing"])))
+    res = make_covers(games, os.path.abspath(args.out), args.only, args.force, args.skip_auto_art, progress, log=print, family=family, hue=hue, sat=sat, val=val, completed=completed, treatment=treatment)
+    print("\n%d covers in %s | %d skipped (DLC/tools/non-games) | %d without portrait art" % (res["ok"], os.path.abspath(args.out), res["skipped"], len(res["missing"]))
+          + (" | %d from your Steam Family library" % res["family"] if res["family"] else "")
+          + (" | %d of them are 100%% complete" % res["completed"] if res["completed"] else "")
+          + (" | in a custom colour" if hue or (sat, val) != (100, 100) else ""))
     for appid, name in res["missing"]:
         print("  no art:", appid, name)
     for appid, name in res["failed"]:
@@ -1365,6 +1921,22 @@ def main():
         common(p, make=True, apply_=(name == "run"))
         p.add_argument("--only", type=int, nargs="+", metavar="APPID", help="only these app IDs")
         p.add_argument("--force", action="store_true", help="rebuild covers that already exist")
+        p.add_argument("--hue", type=_hue_arg, default=None, metavar="DEGREES",
+                       help="turn the case colour by this many degrees, 0 to 359 (0 is the original blue; covers in another colour are rebuilt). "
+                            "Default: the colour of the covers already in the folder, else the original blue")
+        p.add_argument("--saturation", type=_percent_arg, default=None, metavar="PERCENT",
+                       help="how colourful the case is, 0 to 100 (100 is the original, 0 is grey; covers in another tone are rebuilt). "
+                            "Default: that of the covers already in the folder, else 100")
+        p.add_argument("--brightness", type=_percent_arg, default=None, metavar="PERCENT",
+                       help="how light the case is, 0 to 100 (100 is the original, 0 is black; covers in another tone are rebuilt). "
+                            "Default: that of the covers already in the folder, else 100")
+        p.add_argument("--games-page", metavar="FILE",
+                       help="your Steam games page saved from the browser as \"Webpage, Complete\" (HTML only will not do); games with every achievement unlocked get a special cover. "
+                            "The saved page contains a temporary login token of yours: this app does not use or keep it, and you can delete the page afterwards")
+        p.add_argument("--completed-style", choices=("ribbon", "gold-case", "gold-border", "none"), default=None,
+                       help="how 100%% games look: ribbon (a rosette and a ribbon, the default with --games-page), gold-case, gold-border, or none (plain covers again). "
+                            "gold-case is always gold and ignores --hue, --saturation and --brightness. "
+                            "Needs --games-page, except none. Without either option the covers are left as they are")
         p.add_argument("--skip-auto-art", action="store_true", help=AUTO_ART_HELP)
         p.set_defaults(fn=fn)
     p = sub.add_parser("apply", help="copy covers into Steam"); common(p, apply_=True); p.set_defaults(fn=cmd_apply)
@@ -1375,6 +1947,8 @@ def main():
     p.add_argument("--backup", help="backup folder name (see userdata/<id>/config/)")
     p.set_defaults(fn=cmd_restore)
     args = ap.parse_args()
+    if args.cmd in ("make", "run") and args.completed_style not in (None, "none") and args.games_page is None:
+        ap.error("--completed-style needs --games-page")
     try:
         args.fn(args)
     except SteamcaseError as e:
