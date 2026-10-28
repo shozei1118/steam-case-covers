@@ -161,4 +161,3 @@ Good to know:
 * Switching the choice, or saving the page again after you finish another game and clicking **Make covers**, rebuilds only the covers that change. If you make covers without loading a page, covers that are already highlighted keep their highlight.
 * The page lists most of a library but not all of it. On the author's library it listed about 99% of the covers (509 of 515): a few old, free or hidden games are not on it and cannot be highlighted.
 * This was only tried with Chrome, on Linux, with Steam set to Portuguese and to English; the saved pages gave exactly the same result. Firefox is expected to save the page the same way, and the app reads the progress without depending on the language of Steam's label, but other languages and browsers were not tested. Windows and macOS were not tested either, and neither was a real touchscreen.
-
