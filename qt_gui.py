@@ -357,6 +357,7 @@ class ArtworkGrid(QScrollArea):
 
 class CoverEditor(QFrame):
     platform_changed = Signal(str)
+    platinum_changed = Signal(bool)
     source_changed = Signal(str)
     apply_clicked = Signal()
     batch_clicked = Signal()
@@ -392,6 +393,10 @@ class CoverEditor(QFrame):
             self.platform.addItem(platform["name"], platform["id"])
         self.platform.currentIndexChanged.connect(lambda: self.platform_changed.emit(self.platform.currentData()))
         controls.addRow("Platform", self.platform)
+        self.platinum = QCheckBox("Platinum Edition")
+        self.platinum.setToolTip("Add a platinum rim and one trophy to this game's cover")
+        self.platinum.toggled.connect(self.platinum_changed)
+        controls.addRow("", self.platinum)
         self.source = QComboBox()
         self.source.setPlaceholderText("Imported local image")
         self.source.addItems(["Steam CDN", "SteamGridDB"])
@@ -470,6 +475,11 @@ class CoverEditor(QFrame):
             self.platform.blockSignals(True)
             self.platform.setCurrentIndex(index)
             self.platform.blockSignals(False)
+
+    def set_platinum(self, enabled):
+        self.platinum.blockSignals(True)
+        self.platinum.setChecked(bool(enabled))
+        self.platinum.blockSignals(False)
 
     def set_source(self, source):
         self.source.blockSignals(True)
@@ -601,6 +611,7 @@ class MainWindow(QMainWindow):
         root.addWidget(center)
         self.editor = CoverEditor()
         self.editor.platform_changed.connect(self.platform_changed)
+        self.editor.platinum_changed.connect(self.platinum_changed)
         self.editor.source_changed.connect(self.source_changed)
         self.editor.apply_clicked.connect(self.apply_selected)
         self.editor.batch_clicked.connect(self.add_to_batch)
@@ -1118,6 +1129,7 @@ class MainWindow(QMainWindow):
             self.search_games_now()
             self.editor.set_game(game)
             self.editor.set_platform("steam")
+            self.editor.set_platinum(self.service.platinum_for(game))
             self.editor.set_source("SteamGridDB")
             self.editor.set_ready(False, True)
             self.gallery.clear_tiles("Choose the matching search result, or import an image.")
@@ -1208,6 +1220,7 @@ class MainWindow(QMainWindow):
         self.prepared_file = None
         self.editor.set_game(game)
         self.editor.set_platform(self.service.platform_for(game))
+        self.editor.set_platinum(self.service.platinum_for(game))
         self.editor.set_source(self.service.default_source(game))
         self.editor.set_ready(False, game.verified)
         self.editor.status.setText("Loading current cover and artwork…")
@@ -1314,6 +1327,11 @@ class MainWindow(QMainWindow):
             return
         self.render_preview()
 
+    def platinum_changed(self, enabled):
+        if self.game:
+            self.service.remember_platinum(self.game, enabled)
+        self.render_preview()
+
     def source_changed(self, _source):
         self.local_image = False
         self.preview_token += 1
@@ -1350,7 +1368,7 @@ class MainWindow(QMainWindow):
     def current_item(self):
         return CoverItem(self.game, self.editor.platform.currentData(), image=self.image_path,
                          file=self.prepared_file, source="Local file" if self.local_image else self.editor.source.currentText(),
-                         preview=self.preview_path)
+                         preview=self.preview_path, platinum=self.editor.platinum.isChecked())
 
     def add_to_batch(self):
         if not self.preview_path or not self.game:
@@ -1435,7 +1453,8 @@ class MainWindow(QMainWindow):
         self.batch_table.blockSignals(True)
         self.batch_table.setRowCount(len(items))
         for row, item in enumerate(items):
-            title = QTableWidgetItem(item.game.name + ("\nSteam ID %s" % item.game.steam_id
+            title = QTableWidgetItem(item.game.name + (" · Platinum" if item.platinum else "") +
+                                     ("\nSteam ID %s" % item.game.steam_id
                                                       if item.game.steam_id else "\nPNG only"))
             path = item.preview or item.file or item.image
             if path:
@@ -1473,6 +1492,7 @@ class MainWindow(QMainWindow):
         self.shortcut_context = item.game if item.game.verified and item.game.source != "steam" else None
         self.select_game(item.game)
         self.editor.set_platform(item.platform)
+        self.editor.set_platinum(item.platinum)
         self.editor.set_source(item.source)
         self.local_image = item.source == "Local file"
         if self.local_image:
@@ -1485,9 +1505,12 @@ class MainWindow(QMainWindow):
             self.render_preview()
         elif item.file:
             self.prepared_file = item.file
-            self.preview_path = item.file
-            self.editor.new.set_path(item.file)
-            self.editor.set_ready(True, item.game.verified)
+            if item.platinum:
+                self.render_preview()
+            else:
+                self.preview_path = item.file
+                self.editor.new.set_path(item.file)
+                self.editor.set_ready(True, item.game.verified)
 
     def remove_batch(self):
         key = self._batch_key()

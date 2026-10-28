@@ -12,9 +12,9 @@
 ![Linux](https://img.shields.io/badge/Linux-Steam%20Deck-577bce?style=flat-square&logo=steamdeck&logoColor=e8eaf0)
 ![Python](https://img.shields.io/badge/Python-3.12-577bce?style=flat-square&logo=python&logoColor=e8eaf0)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
-![Version](https://img.shields.io/badge/version-1.2.1-83c7ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.2-83c7ee?style=flat-square)
 
-[**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
+[**⬇ Download**](https://github.com/shozei1118/steam-case-covers/releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 
 <img src="assets/steam-library.png" width="460" alt="A Steam library with case covers installed">
 
@@ -23,7 +23,9 @@
 ---
 
 > [!NOTE]
-> Case Covers is not affiliated with Valve, Sony, Microsoft, Nintendo, Sega or any game publisher. Platform names and logos are trademarks of their owners; see [THIRD_PARTY.md](THIRD_PARTY.md).
+> Case Covers is not affiliated with Valve, Sony, Microsoft, Nintendo, Sega or any game publisher. Platform names and logos are trademarks of their owners; see [THIRD_PARTY.md](docs/THIRD_PARTY.md).
+
+The Tkinter fallback also keeps its saved-games-page achievement highlighting, colour controls and command-line options; see [detailed notes](docs/DETAILS.md#tkinter-completion-highlights). The Cover Editor’s Platinum Edition switch is manual and adds no text to the cover.
 
 ## Features
 
@@ -34,6 +36,7 @@
 | 🔎 **Search** | Find any game by name, independently of Steam. You always pick the exact match; nothing is guessed. |
 | 🖼 **Artwork sources** | Steam's own portraits (no key needed), SteamGridDB with your personal API key, or a local PNG/JPG/WebP image. |
 | ✏️ **Cover Editor** | Shows the current Steam cover beside the final framed preview before you change anything. |
+| 🏆 **Platinum Edition** | Optional silver-blue outer rim and one trophy on a completed game's cover; saved per game across sessions. |
 | 📦 **Batch** | Queue many covers, then apply them with one backup and at most one Steam restart, or export them all as PNG. Automatic generation joins the same queue. |
 | 💾 **Backup** | Export and import every locally stored custom portrait for a Steam account, shortcuts included, with a safety backup. |
 | ↩️ **Undo** | Restore steps back one Apply at a time; Reset returns to Steam's default art. |
@@ -43,7 +46,7 @@
 
 ### Ready-made build (recommended)
 
-Download the file for your system from the [latest release](../../releases/latest):
+Download the file for your system from the [latest release](https://github.com/shozei1118/steam-case-covers/releases/latest):
 
 | System | File | Notes |
 |---|---|---|
@@ -55,7 +58,7 @@ Download the file for your system from the [latest release](../../releases/lates
 > [!NOTE]
 > The builds are not code-signed. On Windows, SmartScreen may warn on first launch: **More info → Run anyway**. On macOS, run `xattr -dr com.apple.quarantine ~/Downloads/CaseCovers.app` in Terminal before opening the app. Step-by-step help is in the [detailed notes](docs/DETAILS.md#installation-help).
 
-Every release has a `SHA256SUMS` file, so you can check what you downloaded. See [SECURITY.md](SECURITY.md).
+Every release has a `SHA256SUMS` file, so you can check what you downloaded. See [SECURITY.md](docs/SECURITY.md).
 
 ### From source
 
@@ -75,7 +78,7 @@ On macOS and Linux, use `python3`. The previous Tkinter app is still available w
 ### Getting started
 
 1. **Choose a game.** **Library** lists your installed Steam games and shortcuts. For the rest of your library, click **Download your game list**, sign in to Steam in your browser, save the page as `userdata.json` and click **Load userdata.json**. Use **Search** for a game outside your Steam library.
-2. **Choose artwork and a frame.** Click a portrait thumbnail or import your own image, then pick one of the 29 platform frames. The Cover Editor updates the final preview.
+2. **Choose artwork and a frame.** Click a portrait thumbnail or import your own image, then pick one of the 29 platform frames. Tick **Platinum Edition** for a game you have completed; the editor saves the choice for that game and updates the preview.
 3. **Apply or export.** **Apply to Steam** changes one game, **Add to batch** queues it, and **Export PNG** saves the cover without touching Steam.
 
 > [!WARNING]
@@ -115,6 +118,8 @@ Steam's copies live in `userdata/<id>/config/grid`, next to the backups the app 
 
 More answers are in the [FAQ](docs/DETAILS.md#faq).
 
+Official repository: [shozei1118/steam-case-covers](https://github.com/shozei1118/steam-case-covers).
+
 ## Development
 
 ### Run from source
@@ -148,7 +153,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_windows.ps1 -Ins
 
 ### Releases
 
-Pushing a `vX.Y.Z` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It tests and builds Windows, macOS and Linux, smoke-tests the Windows installer, and publishes everything with checksums on the Releases page (signed build provenance is added once the repository is public). GitHub Releases are the only distribution channel.
+Pushing a `vX.Y.Z` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It tests and builds Windows, macOS and Linux, smoke-tests the Windows installer, and publishes everything with checksums and signed provenance on the Releases page. GitHub Releases are the only distribution channel.
 
 ### Project layout
 
@@ -157,7 +162,7 @@ qt_gui.py              Main PySide6 window: Library, Search, Batch, Backup, Sett
 gui.py                 Tkinter fallback with the original three-step workflow
 steamcase.py           Steam discovery, rendering, apply, backup, restore and the CLI
 cover_workflow.py      Artwork search, cache, credentials and platform export
-case_service.py        Single and batch workflows for both GUIs; preferences and queue
+case_service.py        Qt single and batch workflows; preferences and queue
 platform_catalog.py    Loads platforms/catalog.json (data only)
 crash_report.py        Python and native crash logs
 platforms/catalog.json 29 platform definitions
@@ -171,12 +176,9 @@ Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Fram
 
 ## Changelog
 
-### 1.2.1
+### 1.5.0
 
-- The release workflow also works while the repository is private.
-
-### 1.2.0
-
+- Optional Platinum Edition rim and a single trophy for all 29 platforms, with per-game persistence, Batch and Steam/PNG export support. [Compare normal and Platinum covers](docs/platinum-comparison.png).
 - New PySide6 app with **Library**, **Search**, **Batch**, **Backup** and **Settings** views and a shared Cover Editor.
 - 29 platform frames with local logo variants; SteamGridDB artwork with a key stored in the OS credential store.
 - Windows installer, persistent crash logs and a renamed app: Case Covers.
@@ -185,11 +187,11 @@ Project rules and the development workflow are in [`AGENTS.md`](AGENTS.md). Fram
 
 - Layout follows the real text size; account picker for several Steam accounts; Reset can also remove art from other sources.
 
-All versions are in [CHANGELOG.md](CHANGELOG.md).
+All versions are in [CHANGELOG.md](docs/CHANGELOG.md).
 
 ## Acknowledgments
 
-Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community, and to the authors of [Pillow](https://python-pillow.org), [PySide6](https://doc.qt.io/qtforpython-6/), [PyInstaller](https://pyinstaller.org), [Inno Setup](https://jrsoftware.org/isinfo.php), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](THIRD_PARTY.md).
+Thanks to [SteamGridDB](https://www.steamgriddb.com) and its community, and to the authors of [Pillow](https://python-pillow.org), [PySide6](https://doc.qt.io/qtforpython-6/), [PyInstaller](https://pyinstaller.org), [Inno Setup](https://jrsoftware.org/isinfo.php), the [Nunito Sans](https://fonts.google.com/specimen/Nunito+Sans) font and the KDE Breeze icon theme. Details are in [THIRD_PARTY.md](docs/THIRD_PARTY.md).
 
 Game artwork belongs to its publishers and developers. Covers you generate contain that artwork: keep them for personal use.
 

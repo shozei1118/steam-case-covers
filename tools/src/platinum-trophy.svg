@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">
+<defs>
+ <linearGradient id="seat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d6e7f6"/><stop offset=".16" stop-color="#abb9c8"/><stop offset=".54" stop-color="#607d9b"/><stop offset=".88" stop-color="#819bb2"/><stop offset="1" stop-color="#4b657f"/></linearGradient>
+ <linearGradient id="cup"><stop stop-color="#607d9b"/><stop offset=".27" stop-color="#e3f0ff"/><stop offset=".48" stop-color="#b8ccdE"/><stop offset=".7" stop-color="#f1f7ff"/><stop offset="1" stop-color="#7290ac"/></linearGradient>
+</defs>
+<!-- The shoulders merge into the existing lower lip; no separate badge. -->
+<path d="M238 887 Q250 887 252 873 L255 851 Q257 839 270 839 H330 Q343 839 345 851 L348 873 Q350 887 362 887 V899 H238Z" fill="url(#seat)"/>
+<path d="M240 887 Q252 887 254 871 L257 851 Q259 841 270 841 H330 Q341 841 343 851 L346 871 Q348 887 360 887" fill="none" stroke="#e3f0ff" stroke-opacity=".65" stroke-width="1.2"/>
+<!-- Original upright cup: open handles, bowl, stem and foot. -->
+<g fill="none" stroke="#304b65" stroke-width="6" stroke-linejoin="round">
+ <path d="M284 851 H275 V858 Q275 870 290 870 M316 851 H325 V858 Q325 870 310 870"/>
+</g>
+<g fill="none" stroke="url(#cup)" stroke-width="3.5" stroke-linejoin="round">
+ <path d="M284 851 H275 V858 Q275 870 290 870 M316 851 H325 V858 Q325 870 310 870"/>
+</g>
+<path d="M282 847 H318 L315 862 Q313 873 303 875 V882 H311 Q315 882 315 888 H285 Q285 882 289 882 H297 V875 Q287 873 285 862Z" fill="url(#cup)" stroke="#38546d" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M286 850 H314 M288 853 L290 863 Q291 868 295 870 M288 886 H312" fill="none" stroke="#e3f0ff" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

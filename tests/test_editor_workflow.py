@@ -139,7 +139,7 @@ class EditorWorkflow(unittest.TestCase):
             Image.new("RGB", (600, 900), "red").save(source1)
             Image.new("RGB", (600, 900), "blue").save(source2)
             cache = root / "cache"
-            cache.mkdir()
+            self.assertFalse(cache.exists(), "Fresh installs have no artwork cache yet")
             app = SimpleNamespace(events=queue.Queue(), _acc=lambda: "111",
                                   covers_dir=str(root / "covers"))
             items = [{"key": "steam:220", "name": "Half-Life 2", "platform": "ps4",

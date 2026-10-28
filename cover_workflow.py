@@ -213,7 +213,7 @@ def current_steam_cover(steam, user, appid):
     return None
 
 
-def export_one(image_path, platform_id, title, output_dir, steam_id=None):
+def export_one(image_path, platform_id, title, output_dir, steam_id=None, platinum=False):
     validate_local_image(image_path)
     platform_catalog.get_platform(platform_id)
     frame_path = platform_catalog.local_asset("assets/frames/%s.png" % platform_id)
@@ -226,10 +226,15 @@ def export_one(image_path, platform_id, title, output_dir, steam_id=None):
         name = "%s_%d.png" % (sc.slug(title), steam_id)
     else:
         digest = hashlib.sha256((title + platform_id + str(image_path)).encode("utf-8")).hexdigest()[:8]
-        name = "%s_%s_x%s.png" % (sc.slug(title), platform_id, digest)
+        name = "%s_%s_x%s%s.png" % (sc.slug(title), platform_id, digest,
+                                    "_platinum" if platinum else "")
     output = folder / name
     with Image.open(frame_path) as frame:
-        sc.build_cover(str(image_path), str(output), frame.convert("RGBA"))
+        selected_frame = frame.convert("RGBA")
+        if platinum:
+            from platinum_frame import apply
+            selected_frame = apply(selected_frame)
+        sc.build_cover(str(image_path), str(output), selected_frame)
     return output
 
 
@@ -244,12 +249,24 @@ def export_many(items, output_dir, progress=None):
                     raise sc.SteamcaseError("The prepared Steam cover must be a named PNG file.")
                 target = Path(output_dir) / source.name
                 target.parent.mkdir(parents=True, exist_ok=True)
-                if source.resolve() != target.resolve():
+                if item.get("platinum", False):
+                    from platinum_frame import apply
+                    with Image.open(source) as cover:
+                        finished = apply(cover.convert("RGBA"))
+                    fd, temporary = tempfile.mkstemp(prefix=".platinum-", suffix=".png", dir=target.parent)
+                    try:
+                        with os.fdopen(fd, "wb") as stream:
+                            finished.save(stream, format="PNG", optimize=True)
+                        os.replace(temporary, target)
+                    finally:
+                        if os.path.exists(temporary):
+                            os.unlink(temporary)
+                elif source.resolve() != target.resolve():
                     shutil.copy2(source, target)
                 done.append(target)
             else:
                 done.append(export_one(item["image"], item["platform"], item["name"], output_dir,
-                                       item.get("steam_id")))
+                                       item.get("steam_id"), item.get("platinum", False)))
         except Exception as exc:
             errors.append((item.get("name", ""), str(exc)))
         if progress:

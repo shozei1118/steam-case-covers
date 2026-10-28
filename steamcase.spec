@@ -4,8 +4,10 @@
 import os, sys
 
 # assets/version.txt only exists in release builds (the workflow writes the tag into it); source runs report "dev"
-a = Analysis(["qt_gui.py"], datas=[("assets/frame.png", "assets"), ("assets/icon.png", "assets"),
-                                ("assets/frames", "assets/frames"), ("platforms/catalog.json", "platforms")]
+a = Analysis(["qt_gui.py"], datas=[("assets/frame.png", "assets"), ("assets/platinum-rim.png", "assets"), ("assets/platinum-trophy.png", "assets"), ("assets/icon.png", "assets"),
+                                ("assets/frames", "assets/frames"), ("platforms/catalog.json", "platforms"),
+                                ("assets/family_corner.png", "assets"), ("assets/completion_overlay.png", "assets"),
+                                ("assets/default_art.png", "assets")]
              + ([("assets/version.txt", "assets")] if os.path.exists("assets/version.txt") else []),
              hiddenimports=["keyring.backends.Windows", "keyring.backends.macOS", "keyring.backends.SecretService"],
              excludes=["numpy", "matplotlib", "scipy", "pandas", "tkinter",
@@ -16,7 +18,7 @@ pyz = PYZ(a.pure)
 if sys.platform == "darwin":                       # macOS: folder-based .app (single-file .app is discouraged)
     exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="CaseCovers", console=False)
     coll = COLLECT(exe, a.binaries, a.datas, name="CaseCovers")
-    app = BUNDLE(coll, name="CaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.diegobergonsi.casecovers")
+    app = BUNDLE(coll, name="CaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.shozei1118.casecovers")
 else:                                              # Windows and Linux: one file
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name="CaseCovers", console=False,
               icon="assets/icon.ico" if sys.platform.startswith("win") else None)

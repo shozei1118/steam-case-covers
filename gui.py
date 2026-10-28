@@ -2,15 +2,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Diego Bergonsi. Part of steam-case-covers: https://github.com/diegobergonsi/steam-case-covers
 """steamcase GUI: three steps, no terminal.  Run:  python gui.py"""
-import base64, io, os, queue, re, shutil, subprocess, sys, tempfile, threading, time, webbrowser
+import base64, io, os, queue, re, shutil, stat, subprocess, sys, tempfile, threading, time, webbrowser
 import tkinter as tk
 from tkinter import filedialog
 import tkinter.font as tkfont
 
+import completion
 import steamcase as sc
 import cover_workflow as cw
 from platform_catalog import load_catalog
-from widgets import (AMBER, BG, CARD, LINE, FG, MUTED, FAINT, ACCENT, RED, Card, StepBadge, RoundedButton, Switch, Bar, InfoBadge, ScrollFrame, Messages, px, set_scale)
+from widgets import (AMBER, BG, CARD, LINE, FG, MUTED, FAINT, ACCENT, RED, Card, StepBadge, RoundedButton, Switch, Bar, InfoBadge, ScrollFrame, Messages, Flow, HueSlider, ToneSlider, Swatch, Choice, px, set_scale)
 
 
 def downloads_dir():
@@ -27,17 +28,25 @@ def downloads_dir():
 
 
 SAVE_KEY = "Cmd+S" if sys.platform == "darwin" else "Ctrl+S"
+GAMES_PAGE_URL = "https://steamcommunity.com/my/games/?tab=all&sort=achievements"     # the user's own games page, most achievements first
+STYLES = [("gold-case", "Gold case"), ("gold-border", "Gold border"), ("ribbon", "Normal case with ribbon"), ("none", "No special case")]
+PAGE_HELP = ("How to save the page: open it with the button and log in if asked. Wait until your games have loaded, press %s and save it as "
+             "“Webpage, Complete” (Chrome or Firefox), named games.html. Your browser also saves a folder next to it.\n\n"
+             "The saved file contains a temporary login token for your Steam account. This app only reads which games are at 100%%: "
+             "it does not use or keep the token. You can delete the file and its folder afterwards." % SAVE_KEY)
 messagebox = Messages()                      # themed dialogs; App sets the parent window
 
 
-def pick_file(title, initialdir):
-    """File chooser. On Linux the plain Tk dialog looks very dated, so use the desktop's own (KDE or GNOME) when present."""
+def pick_file(title, initialdir, kind=("JSON files", "*.json")):
+    """File chooser. On Linux the plain Tk dialog looks very dated, so use the desktop's own (KDE or GNOME) when present.
+    `kind` is (description, patterns separated by spaces) of the files to show first."""
     start = (initialdir if initialdir and os.path.isdir(initialdir) else os.path.expanduser("~")).rstrip("/") + "/"
+    what, patterns = kind
     if sys.platform.startswith("linux"):
         if shutil.which("kdialog"):
-            cmds = [["kdialog", "--title", title, "--getopenfilename", start, "*.json|JSON files (*.json)\n*|All files"]]
+            cmds = [["kdialog", "--title", title, "--getopenfilename", start, "%s|%s (%s)\n*|All files" % (patterns, what, patterns)]]
         elif shutil.which("zenity"):
-            cmds = [["zenity", "--file-selection", "--title=" + title, "--filename=" + start, "--file-filter=JSON files | *.json", "--file-filter=All files | *"]]
+            cmds = [["zenity", "--file-selection", "--title=" + title, "--filename=" + start, "--file-filter=%s | %s" % (what, patterns), "--file-filter=All files | *"]]
         else:
             cmds = []
         for cmd in cmds:
@@ -49,7 +58,7 @@ def pick_file(title, initialdir):
                 return r.stdout.strip()
             if r.returncode == 1:                    # the user pressed Cancel
                 return ""
-    return filedialog.askopenfilename(title=title, initialdir=start, filetypes=[("userdata.json", "*.json"), ("All files", "*.*")])
+    return filedialog.askopenfilename(title=title, initialdir=start, filetypes=[(what, patterns), ("All files", "*.*")])
 
 
 def _short(name, n=28):
@@ -211,8 +220,20 @@ class App(tk.Tk):
         self.library_path = None          # chosen userdata.json
         self.installed_only = tk.BooleanVar(value=False)
         self.skip_auto = tk.BooleanVar(value=False)
+        self.hue = tk.IntVar(value=0)     # case colour: degrees turned from the original blue
+        self.sat = tk.IntVar(value=100)   # its colourfulness and brightness, 0..100 (100: as the original blue)
+        self.val = tk.IntVar(value=100)
+        self._preview_job = None
+        self._setting_tone = False
         self.restart_steam = tk.BooleanVar(value=True)
+        self.games_page = None            # the saved Steam games page in use (path), or None: covers keep the 100% look they have
+        self.completed = None             # app ids at 100% on that page; only these numbers are kept from it, never its text
+        self.completion_style = tk.StringVar(value="ribbon")       # one of sc.TREATMENTS, or "none"
+        self.page_pending = 0             # games pages being read on a worker thread
+        self._page_req = 0                # the newest of those; older answers are dropped
+        self._page_tried = {}             # path -> (size, mtime) of pages in Downloads already read once
 
+        self._wrapped, self._wrap_width, self._head_narrow = [], 0, False
         self.scroller = ScrollFrame(self)
         self.scroller.pack(fill="both", expand=True)
         self.holder = self.scroller.inner
@@ -233,6 +254,8 @@ class App(tk.Tk):
         actions.pack(side="right")
         self.btn_settings = RoundedButton(actions, "⚙", self.open_settings, bg=BG, quiet=True)
         self.btn_settings.pack(side="right")
+        self.btn_update = RoundedButton(actions, "Check for updates", self.check_update, bg=BG, quiet=True)
+        self.btn_update.pack(side="right", padx=(0, px(8)))
         self._header_stacked = False
         head.bind("<Configure>", lambda event: self._layout_header(event.width, brand, actions), add="+")
         self.settings_window = None
@@ -307,10 +330,12 @@ class App(tk.Tk):
     def destroy(self):
         self.cancel_flag.set()
         self._quit.set()
-        for t in getattr(self, "_timers", []):
+        for t in list(getattr(self, "_timers", [])) + [getattr(self, "_preview_job", None)]:
+            if not t:
+                continue
             try:
                 self.after_cancel(t)
-            except tk.TclError:
+            except (tk.TclError, ValueError):
                 pass
         super().destroy()
 
@@ -382,6 +407,34 @@ class App(tk.Tk):
         r = tk.Frame(parent, bg=CARD)
         r.pack(fill="x", pady=px(4) if pady is None else pady)       # px() here, not as a default: defaults run before the scale is known
         return r
+
+    def _flow(self, parent, pady=None):
+        r = Flow(parent, bg=CARD)
+        r.pack(fill="x", pady=px(4) if pady is None else pady)
+        return r
+
+    def _wrap(self, label, cap=None):
+        """Register a label whose wrap width follows the window (and never exceeds cap)."""
+        label.configure(wraplength=cap or px(620))      # first size; _rewrap takes over once the window is on screen
+        self._wrapped.append((label, cap))
+        return label
+
+    def _rewrap(self, _e=None):
+        width = self.holder.winfo_width()
+        if width < 2 or width == self._wrap_width:
+            return
+        self._wrap_width = width
+        room = max(px(200), width - px(2 * 28) - px(44) - px(4))
+        for label, cap in self._wrapped:
+            label.configure(wraplength=min(room, cap) if cap else room)
+        narrow = width < px(640)                    # the header's button drops under the title instead of squeezing it
+        if narrow != self._head_narrow:
+            self._head_narrow = narrow
+            if narrow:
+                self.btn_update.grid_configure(row=1, column=1, sticky="w", pady=(px(8), 0))
+            else:
+                self.btn_update.grid_configure(row=0, column=2, sticky="e", pady=0)
+        self._tagline.configure(wraplength=max(px(160), width - px(2 * 28) - px(80)))
 
     def _note(self, parent, text):
         label = tk.Label(parent, text=text, bg=CARD, fg=MUTED, justify="left", wraplength=px(620), anchor="w")
@@ -494,7 +547,7 @@ class App(tk.Tk):
 
         def walk(w):
             for c in w.winfo_children():
-                if isinstance(c, (RoundedButton, Switch)):
+                if isinstance(c, (RoundedButton, Switch, HueSlider, ToneSlider, Swatch)):
                     c.configure(state=st)
                 walk(c)
         walk(body)
@@ -523,14 +576,15 @@ class App(tk.Tk):
         self._note(body, "Steam keeps your game list on a web page. Click the button and log in if it asks. "
                          "A page of text appears: press %s and save it, keeping the name userdata.json. "
                          "This app notices the file by itself." % SAVE_KEY)
-        r = self._row(body)
-        RoundedButton(r, "Download your game list", self.open_download_page, primary=True).pack(side="left")
-        RoundedButton(r, "Browse…", self.browse, quiet=True).pack(side="left", padx=px(10))
-        RoundedButton(r, "Copy link", self.copy_link, quiet=True).pack(side="left")
+        r = self._flow(body)
+        r.add(RoundedButton(r, "Download your game list", self.open_download_page, primary=True))
+        r.add(RoundedButton(r, "Browse…", self.browse, quiet=True), px(10))
+        r.add(RoundedButton(r, "Copy link", self.copy_link, quiet=True), px(10))
         r = self._row(body)
         self.sw_installed = Switch(r, "Only my installed games (no file needed)", self.installed_only, self.on_installed_only)
         self.sw_installed.pack(side="left")
-        self.step1_status = tk.Label(body, text="Waiting for the saved game list (userdata.json)…", bg=CARD, fg=MUTED, anchor="w", justify="left", wraplength=px(620))
+        InfoBadge(r, sc.FAMILY_HELP).pack(side="left", padx=px(6))
+        self.step1_status = self._wrap(tk.Label(body, text="Waiting for the saved game list (userdata.json)…", bg=CARD, fg=MUTED, anchor="w", justify="left"))
         self.step1_status.pack(fill="x", pady=(px(8), 0))
         self._wrap_to_parent(body, self.step1_status)
 
@@ -582,6 +636,9 @@ class App(tk.Tk):
         elif not self.library_path:
             self.step1_status.configure(text="Waiting for userdata.json…", fg=MUTED)
         self._set_state(self.step2, ready and not self.running)
+        if self.page_pending:
+            self.btn_make.configure(state="disabled")        # wait for the page: Make covers must not use the one read before
+        self._refresh_choice()
         self.btn_cancel.configure(state="normal" if self.running else "disabled")
         self.update_steps()
 
@@ -606,30 +663,260 @@ class App(tk.Tk):
                     self._seen[p] = sig
         except OSError:
             pass
+        if not self.games_page and not self.page_pending:
+            self._watch_page()
         self._timers[0] = self.after(1500, self.watch_downloads)
+
+    def _watch_page(self):
+        """A new, finished games*.html (or .htm) in Downloads is read once, on a worker thread. Its error, if any, shows once per version of the file.
+        The folder the browser saves next to the page is not a file, so it is skipped."""
+        try:
+            names = os.listdir(self.downloads)
+        except OSError:
+            return
+        for fn in names:
+            low = fn.lower()
+            if not (low.startswith("games") and low.endswith((".html", ".htm"))):
+                continue
+            p = os.path.join(self.downloads, fn)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            if not stat.S_ISREG(st.st_mode) or st.st_mtime < self.started or st.st_size > completion.MAX_GAMES_PAGE:
+                continue
+            sig = (st.st_size, st.st_mtime)
+            if self._seen.get(p) == sig and self._page_tried.get(p) != sig:      # unchanged since last poll = finished; not read in this version yet
+                self._page_tried[p] = sig
+                self.load_games_page(p)
+                break
+            self._seen[p] = sig
 
     # ----- step 2 -----
     def _build_step2(self, body):
         self._note(body, "Downloads each game's artwork from Steam and builds the covers on your computer.")
+        self._build_colour(body)
+        self._build_completion(body)
         r = self._row(body)
         self.sw_skip = Switch(r, "Skip blurry covers", self.skip_auto)
         self.sw_skip.pack(side="left")
         InfoBadge(r, sc.AUTO_ART_HELP).pack(side="left", padx=px(6))
-        r = self._row(body, pady=px(6))
+        self.row_make = r = self._flow(body, pady=px(6))
         self.btn_make = RoundedButton(r, "Make covers", self.start_make, primary=True)
-        self.btn_make.pack(side="left")
+        r.add(self.btn_make)
         self.btn_cancel = RoundedButton(r, "Cancel", self.cancel_make, state="disabled")
-        self.btn_cancel.pack(side="left", padx=px(10))
+        r.add(self.btn_cancel, px(10))
         self.btn_folder = RoundedButton(r, "Open covers folder", self.open_covers_folder)
         self.progress = Bar(body)
         self.progress.pack(fill="x", pady=(px(10), px(6)))
-        self.step2_status = tk.Label(body, text="Not started.", bg=CARD, fg=MUTED, anchor="w", justify="left", wraplength=px(620))
+        self.step2_status = self._wrap(tk.Label(body, text="Not started.", bg=CARD, fg=MUTED, anchor="w", justify="left"))
         self.step2_status.pack(fill="x")
         self._wrap_to_parent(body, self.step2_status)
-        self.preview = tk.Frame(body, bg=CARD)            # a few finished covers: the payoff of this step
+        self.preview = Flow(body, bg=CARD)            # a few finished covers: the payoff of this step
         self._thumbs = []
 
+    def _build_colour(self, body):
+        """Cover colour: three sliders (colour, colourfulness, brightness) on the left, a live preview of a cover on the right (it wraps under
+        on a narrow window), and a row of ready-made swatches below them (six colours, then three greys) that wraps as well."""
+        box = self._flow(body, pady=px(6))
+        left = tk.Frame(box, bg=CARD)
+        head = tk.Frame(left, bg=CARD)
+        head.pack(fill="x")
+        tk.Label(head, text="Cover colour", bg=CARD, fg=FG, font=("TkDefaultFont", 11, "bold")).pack(side="left")
+        self.colour_name = tk.Label(head, text="Original", bg=CARD, fg=MUTED)
+        self.colour_name.pack(side="right", padx=(px(12), 0))
+        grid = tk.Frame(left, bg=CARD)
+        grid.pack(fill="x", pady=(px(4), 0))
+        self.slider = HueSlider(grid, self.hue, sc.case_color)
+        # the tracks show what each slider does to the case in its current colour: grey to vivid, black to bright
+        self.sat_slider = ToneSlider(grid, self.sat, lambda v: sc.case_color(self.hue.get() % 360, v, self.val.get()), depends=(self.hue, self.val))
+        self.val_slider = ToneSlider(grid, self.val, lambda v: sc.case_color(self.hue.get() % 360, self.sat.get(), v), depends=(self.hue, self.sat))
+        self.colour_hint = tk.Label(grid, text="", bg=CARD, fg=MUTED, anchor="w")             # always gridded, so its row never changes height
+        for row, (text, slider) in enumerate((("Colour", self.slider), ("Colourfulness", self.sat_slider), ("Brightness", self.val_slider))):
+            tk.Label(grid, text=text, bg=CARD, fg=MUTED, anchor="w").grid(row=2 * row, column=0, sticky="w", padx=(0, px(10)))
+            slider.grid(row=2 * row, column=1, sticky="ew")
+        self.colour_hint.grid(row=1, column=1, sticky="w")
+        grid.columnconfigure(1, weight=1)
+        shown = tk.Frame(box, bg=CARD)
+        self.colour_preview = tk.Label(shown, bg=CARD)
+        self.colour_preview.pack()
+        self.preview_caption = tk.Label(shown, text="", bg=CARD, fg=MUTED)       # packed once a page is loaded; then only its text comes and goes
+        box.add(left)
+        box.add(shown, px(20))
+        self.swatch_row = row = self._flow(body, pady=(0, px(2)))
+        self.swatches = []
+        tones = [(sc.case_color(h), (h, 100, 100)) for h in sc.HUE_SWATCHES] + [(sc.case_color(0, s, v), (0, s, v)) for _, s, v in sc.NEUTRAL_SWATCHES]
+        for color, tone in tones:
+            s = Swatch(row, color, lambda t=tone: sc.tone_key(*self._tone()) == sc.tone_key(*t), lambda t=tone: self._set_tone(*t))
+            row.add(s, px(4))
+            self.swatches.append(s)
+        self.colour_note = self._wrap(tk.Label(body, text="Only the original colour is checked for readable text.", bg=CARD, fg=FAINT, justify="left", anchor="w"))
+        found = sc.existing_cover_colour(self.covers_dir)          # reopening the app shows the colour of the covers you already made
+        if found:
+            self._set_tone(*found)
+        for var in (self.hue, self.sat, self.val):
+            var.trace_add("write", self._colour_changed)
+        self._colour_changed()
+
+    def _build_completion(self, body):
+        """The optional block for games at 100% achievements: a way to get the saved games page, and the style of their covers.
+        The style can only be picked once a page is loaded; until then covers keep the look they have."""
+        head = self._row(body, pady=(px(10), 0))
+        tk.Label(head, text="Highlight my 100% games (optional)", bg=CARD, fg=FG, font=("TkDefaultFont", 11, "bold")).pack(side="left")
+        InfoBadge(head, PAGE_HELP).pack(side="left", padx=px(6))
+        self._note(body, "Games where you unlocked every achievement can get a ribbon, and a gold case or border if you like. "
+                         "Steam shows them on your games page: open it, then save it as games.html, choosing “Webpage, Complete”. "
+                         "This app notices the file by itself.")
+        r = self._flow(body)
+        self.btn_page_open = RoundedButton(r, "Open my games page", self.open_games_page)
+        r.add(self.btn_page_open)
+        self.btn_page_browse = RoundedButton(r, "Browse…", self.browse_games_page, quiet=True)
+        r.add(self.btn_page_browse, px(10))
+        self.btn_page_copy = RoundedButton(r, "Copy link", self.copy_page_link, quiet=True)
+        r.add(self.btn_page_copy, px(10))
+        self.page_status = self._wrap(tk.Label(body, text="No games page loaded. Your covers keep the look they have.", bg=CARD, fg=MUTED, anchor="w", justify="left"))
+        self.page_status.pack(fill="x", pady=(px(4), px(4)))
+        self.style_choice = Choice(body, self.completion_style, STYLES, state="disabled")
+        self.style_choice.pack(fill="x", pady=px(4))
+        self.page_note = self._wrap(tk.Label(body, text="", bg=CARD, fg=FAINT, anchor="w", justify="left"))         # packed once a page is loaded
+        self.completion_style.trace_add("write", self._schedule_preview)
+
+    def _completion(self):
+        """(completed, treatment) for make_covers. No page loaded: (None, None), every cover keeps its look.
+        "No special case": (empty set, None), the 100% covers become normal covers. Otherwise the 100% ids and the chosen style."""
+        if self.completed is None:
+            return None, None
+        style = self.completion_style.get()
+        if style not in sc.TREATMENTS:
+            return set(), None
+        return set(self.completed), style
+
+    def open_games_page(self):
+        try:
+            webbrowser.open(GAMES_PAGE_URL)
+        except Exception:
+            pass
+        # webbrowser cannot tell us whether a browser really opened, so always show the way out
+        self.page_status.configure(text="Opening your browser… Log in to Steam if it asks and wait until your games have loaded. Then press %s and save the page "
+                                        "as “Webpage, Complete”, named games.html. Nothing opened? Click “Copy link” and paste it into your browser." % SAVE_KEY, fg=MUTED)
+
+    def copy_page_link(self):
+        self.clipboard_clear()
+        self.clipboard_append(GAMES_PAGE_URL)
+        self.update()                               # keeps the text on the clipboard on some systems
+        self.page_status.configure(text="Link copied. Paste it into your browser, log in if asked, then save the page as “Webpage, Complete”, named games.html (%s)." % SAVE_KEY, fg=ACCENT)
+
+    def browse_games_page(self):
+        path = pick_file("Choose your saved games page", self.downloads, ("Web pages", "*.html *.htm"))
+        if path:
+            self.load_games_page(path)
+
+    def load_games_page(self, path):
+        """Read the saved games page on a worker thread. The answer comes back as a "page" event (see on_page); a failure shows in red in the block."""
+        self._page_req += 1
+        self.page_pending += 1
+        self.refresh_step1()
+        self.page_status.configure(text="Reading %s…" % os.path.basename(path), fg=MUTED)
+        threading.Thread(target=self._page_worker, args=(self._page_req, path), daemon=True).start()
+
+    def _page_worker(self, req, path):
+        """Off the UI thread. Only the app ids at 100% come back, never any text from the page (it holds a login token)."""
+        try:
+            done = completion.completed_apps(completion.read_games_page(path))
+            self.events.put(("page", req, path, done, None))
+        except completion.PageError as e:
+            self.events.put(("page", req, path, None, str(e)))
+        except Exception:                            # never echo what went wrong in detail: it could quote the page
+            self.events.put(("page", req, path, None, "That file could not be read."))
+
+    def on_page(self, req, path, done, error):
+        self.page_pending -= 1
+        if req != self._page_req:                    # the user picked another page in the meantime
+            self.refresh_step1()
+            return
+        name = os.path.basename(path)              # only the file's name is shown, never anything from inside it
+        if error:
+            kept = " The page you loaded before is still used." if self.games_page else ""
+            self.page_status.configure(text="%s: %s%s" % (name, error, kept), fg=RED)
+            self.refresh_step1()
+            return
+        self.games_page, self.completed = path, set(done)
+        n = len(done)
+        found = "Found %d %s at 100%% in %s." % (n, "game" if n == 1 else "games", name) if n else "No game in %s is at 100%% yet." % name
+        self.page_status.configure(text=found + " The game list from step 1 decides which games get covers.", fg=ACCENT)
+        self.page_note.configure(text="Done with the page? You can delete %s and its folder: they hold a temporary login token for your Steam account, "
+                                      "which this app does not use or keep." % name)
+        if not self.page_note.winfo_manager():
+            self.page_note.pack(fill="x", pady=(0, px(6)), after=self.style_choice)
+        self.refresh_step1()
+        self._schedule_preview()
+
+    def _refresh_choice(self):
+        """The style can be picked once a page is loaded, while the other step 2 controls can be used."""
+        ready = self.installed_only.get() or bool(self.library_path)
+        self.style_choice.configure(state="normal" if ready and not self.running and self.games_page else "disabled")
+
+    def _tone(self):
+        """The chosen case colour: (hue, colourfulness, brightness)."""
+        return self.hue.get() % 360, self.sat.get(), self.val.get()
+
+    def _set_tone(self, hue, sat, val):
+        self._setting_tone = True                                # three variables change: update once, afterwards
+        try:
+            self.hue.set(hue)
+            self.sat.set(sat)
+            self.val.set(val)
+        finally:
+            self._setting_tone = False
+        self._colour_changed()
+
+    def _colour_changed(self, *_):
+        if self._setting_tone:
+            return
+        hue, sat, val = self._tone()
+        key = sc.tone_key(hue, sat, val)
+        name = "Original" if key == sc.tone_key(0) else "Custom · %d° %d%% %d%%" % (hue, sat, val)
+        for n, s, v in sc.NEUTRAL_SWATCHES:
+            if key == sc.tone_key(0, s, v):
+                name = n
+        self.colour_name.configure(text=name)
+        for s in self.swatches:
+            s.draw()
+        # without colour or light the Colour slider does nothing: say so (the text, not the row, comes and goes: nothing moves under a finger)
+        self.colour_hint.configure(text="Colour has no effect on grey or black." if sat == 0 or val == 0 else "")
+        if key == sc.tone_key(0):
+            self.colour_note.pack_forget()
+        elif not self.colour_note.winfo_manager():
+            self.colour_note.pack(fill="x", pady=(0, px(6)), after=self.swatch_row)
+        self._schedule_preview()
+
+    def _schedule_preview(self, *_):
+        if self._preview_job is None:                            # one redraw per burst of changes while a slider is dragged
+            self._preview_job = self.after_idle(self._draw_preview)
+
+    def _draw_preview(self):
+        """The sample cover in the chosen colour; with a games page loaded and a style chosen, the cover of a 100% game in that style."""
+        self._preview_job = None
+        treatment = self._completion()[1]
+        # the text, not the row, comes and goes: the style pills below never move under a finger
+        if self.completed is not None and not self.preview_caption.winfo_manager():
+            self.preview_caption.pack(pady=(px(4), 0))
+        self.preview_caption.configure(text="Preview of a 100% game" if treatment else "")
+        if sc.Image is None:
+            return
+        try:
+            import base64, io
+            hue, sat, val = self._tone()
+            im = sc.preview_cover(hue, sat=sat, val=val, treatment=treatment).resize((px(130), px(195)), sc.Image.LANCZOS)
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+            self._colour_img = tk.PhotoImage(master=self, data=base64.b64encode(buf.getvalue()))
+            self.colour_preview.configure(image=self._colour_img)
+        except Exception:
+            pass                                                 # a preview is a nicety: never let it break the step
+
     def _show_preview(self):
+        self.preview.clear()
         for w in self.preview.winfo_children():
             w.destroy()
         self._thumbs = []
@@ -648,13 +935,62 @@ class App(tk.Tk):
             except Exception:
                 continue                                  # a preview is a nicety: never let it break the step
             self._thumbs.append(img)
-            tk.Label(self.preview, image=img, bg=CARD).pack(side="left", padx=(0, px(10)))
+            self.preview.add(tk.Label(self.preview, image=img, bg=CARD), px(10))
         if self._thumbs:
             self.preview.pack(fill="x", pady=(px(12), 0))
+
+    def _replace_reason(self, tone, completed, treatment):
+        """Why Make covers would rebuild covers already in the folder, as (title, sentence) for the prompt; None when nothing is rebuilt."""
+        if not sc.covers_in_other_look(self.covers_dir, *tone, completed=completed, treatment=treatment):
+            return None
+        colour = sc.covers_in_other_colour(self.covers_dir, *tone)
+        styles, changed = set(), False                       # the treatments in the folder, and whether any cover gets another one
+        if completed is not None:
+            try:
+                for n in os.listdir(self.covers_dir):
+                    appid = sc.appid_of(n)
+                    if n.lower().endswith(".png") and appid is not None:
+                        have = sc.cover_treatment(os.path.join(self.covers_dir, n)) or None
+                        styles.add(have)
+                        changed = changed or have != (treatment if int(appid) in completed else None)
+            except OSError:
+                pass
+        if colour and not changed:
+            return "Change the colour of your covers?", "This replaces the covers you already made in another colour."
+        styles &= set(sc.TREATMENTS)
+        label = dict(STYLES).get(treatment)
+        if treatment is None:
+            what = "the covers of your 100% games are made again as normal covers"
+            title, one = "Remove the 100% highlight?", "You chose “No special case”: " + what + "."
+        elif not completed:
+            what = "the covers with a highlight lose it, as no game on your page is at 100%"
+            title, one = "Remove the 100% highlight?", "No game on your page is at 100%, so the covers you made with a highlight lose it and are made again as normal covers."
+        elif styles - {treatment}:
+            what = "the covers of your 100%% games made in another style are made again as “%s”" % label
+            title, one = "Change the look of your 100% games?", "This replaces the covers of your 100%% games made in another style with “%s”." % label
+        elif not styles:
+            what = "your 100%% games get highlighted covers (“%s”)" % label
+            title, one = "Highlight your 100% games?", "This replaces the covers of your 100%% games with highlighted ones (“%s”)." % label
+        else:
+            what = "your 100% covers are updated to match your games page"
+            title, one = "Update your 100% covers?", ("Some covers you already made are made again to match your games page: "
+                                                      "games you finished get the highlight, games no longer at 100% lose it.")
+        if colour:
+            return "Change your covers?", "This replaces the covers you already made in another colour, and %s." % what
+        return title, one
 
     def start_make(self):
         if self.running or self.busy:
             return
+        tone = self._tone()
+        completed, treatment = self._completion()           # read here, on the UI thread: the worker never touches Tk variables
+        why = self._replace_reason(tone, completed, treatment)
+        if why:
+            if not messagebox.askokcancel(why[0],
+                                          [(why[1], "main"),
+                                           ("Steam keeps showing your current art until you add the new covers in step 3.", "muted")],
+                                          ok="Replace them", cancel="Cancel"):
+                return
         lib = None if self.installed_only.get() else self.library_path
         self.running = True
         self.cancel_flag.clear()
@@ -670,23 +1006,57 @@ class App(tk.Tk):
         self.refresh_step1()
         self.refresh_step3()
         skip = self.skip_auto.get()
-        threading.Thread(target=self._worker, args=(lib, skip), daemon=True).start()
+        threading.Thread(target=self._worker, args=(lib, skip, tone, (completed, treatment)), daemon=True).start()
 
-    def _worker(self, lib, skip):
-        """Runs off the UI thread; talks to the UI only through self.events."""
+    def _worker(self, lib, skip, tone=(0, 100, 100), look=(None, None)):
+        """Runs off the UI thread; talks to the UI only through self.events. `tone` is the case colour (hue, sat, val);
+        `look` is (completed, treatment) for the 100% games, taken by start_make (see _completion)."""
+        hue, sat, val = tone
+        completed, treatment = look
         try:
             steam = sc.steam_dir()
-            games = sc.load_games(steam, lib)
+            games, family = sc.load_library(steam, lib)
             if not games:
                 raise sc.SteamcaseError("No games found. Install a game first, or load your userdata.json.")
-            res = sc.make_covers(games, self.covers_dir, skip_auto_art=skip,
+            res = sc.make_covers(games, self.covers_dir, skip_auto_art=skip, family=family, hue=hue, sat=sat, val=val,
                                  progress=lambda *a: self.events.put(("progress",) + a),
-                                 cancelled=self.cancel_flag.is_set)
+                                 cancelled=self.cancel_flag.is_set, completed=completed, treatment=treatment)
             self.events.put(("done", res))
         except sc.SteamcaseError as e:
             self.events.put(("error", str(e)))
         except Exception as e:                      # never leave the UI stuck in "running"
             self.events.put(("error", "Unexpected problem: %s" % e))
+
+    def check_update(self):
+        """Asks GitHub whether a newer release exists. Only on click; nothing is downloaded or installed."""
+        self.btn_update.configure(state="disabled")
+        threading.Thread(target=self._update_worker, daemon=True).start()
+
+    def _update_worker(self):
+        try:
+            self.events.put(("update", sc.check_for_update()))
+        except sc.SteamcaseError as e:
+            self.events.put(("update_error", str(e)))
+        except Exception as e:
+            self.events.put(("update_error", "Unexpected problem: %s" % e))
+
+    def show_update(self, r):
+        self.btn_update.configure(state="normal")
+        if r["newer"] is False:
+            messagebox.showinfo("No update needed", "You have the latest version (%s)." % r["current"])
+            return
+        if r["newer"]:
+            head = "A newer version is available: %s (you have %s)." % (r["latest"], r["current"])
+        else:
+            head = "The latest version is %s. This copy has no version number (it was not installed from a release), so I cannot compare." % r["latest"]
+        text = [(head, "main"),
+                ("“Open GitHub page” opens this project's release page on GitHub in your web browser:\n%s" % r["url"], "muted"),
+                ("Nothing is downloaded or installed unless you choose to do it yourself on that page.", "note")]
+        if messagebox.askokcancel("Update available", text, ok="Open GitHub page", cancel="Not now"):
+            try:
+                webbrowser.open(r["url"])
+            except Exception:
+                pass
 
     def poll_events(self):
         try:
@@ -698,6 +1068,13 @@ class App(tk.Tk):
                     self.step2_status.configure(text="%d of %d · %s" % (done, total, name if len(name) <= 60 else name[:57] + "…"), fg=MUTED)
                 elif ev[0] == "done":
                     self.finish_make(ev[1])
+                elif ev[0] == "page":
+                    self.on_page(*ev[1:])
+                elif ev[0] == "update":
+                    self.show_update(ev[1])
+                elif ev[0] == "update_error":
+                    self.btn_update.configure(state="normal")
+                    messagebox.showerror("Could not check for updates", ev[1])
                 elif ev[0] == "reset_scan":
                     self.on_reset_scan(ev[1], ev[2], ev[3])
                 elif ev[0] == "step3_status":
@@ -825,6 +1202,12 @@ class App(tk.Tk):
         text = "%s%d covers ready." % ("Stopped. " if res["cancelled"] else "Done. ", n)
         if miss:
             text += " %d %s no portrait on Steam." % (miss, "game has" if miss == 1 else "games have")
+        fam = res.get("family", 0)
+        if fam:
+            text += " %d of them %s and %s a green corner." % (fam, "is a family game" if fam == 1 else "are family games", "has" if fam == 1 else "have")
+        done = res.get("completed", 0)
+        if done:
+            text += " %d of them %s 100%% and %s highlighted." % (done, "is" if done == 1 else "are", "is" if done == 1 else "are")
         skipped = res.get("not_games", 0) + res.get("unlisted", 0)
         if skipped:
             text += " Skipped %d items that aren't games you can play (DLC, soundtracks, tools, and apps Steam no longer lists)." % skipped
@@ -834,7 +1217,7 @@ class App(tk.Tk):
         self._set_state(self.step1, True)
         self.refresh_step1()
         if n:
-            self.btn_folder.pack(side="left", padx=px(10))
+            self.row_make.add(self.btn_folder, px(10))
             self._show_preview()
         self.refresh_step3()
 
@@ -1622,23 +2005,23 @@ class App(tk.Tk):
 
     # ----- step 3 -----
     def _build_step3(self, body):
-        self.steam_note = tk.Label(body, text="", bg=CARD, anchor="w", justify="left", wraplength=px(620))
+        self.steam_note = self._wrap(tk.Label(body, text="", bg=CARD, anchor="w", justify="left"))
         self.steam_note.pack(fill="x", pady=(0, px(6)))
         self._wrap_to_parent(body, self.steam_note)
         self._steam_note_state = None
-        self.acc_row = self._row(body)
-        self.acc_label = tk.Label(self.acc_row, text="", bg=CARD, fg=FG, anchor="w", wraplength=px(380), justify="left")
-        self.acc_label.pack(side="left")
+        self.acc_row = self._flow(body)
+        self.acc_label = self._wrap(tk.Label(self.acc_row, text="", bg=CARD, fg=FG, anchor="w", justify="left"), cap=px(380))
+        self.acc_row.add(self.acc_label)
         self.btn_account = RoundedButton(self.acc_row, "Change account", self.choose_account)
         self.refresh_account()
         r = self._row(body)
         self.chk_restart = Switch(r, "Start Steam again when finished", self.restart_steam)
         self.chk_restart.pack(side="left")
-        r = self._row(body, pady=px(6))
+        r = self._flow(body, pady=px(6))
         self.btn_apply = RoundedButton(r, "Apply to Steam", lambda: self.confirm_and_run("apply"), primary=True)
-        self.btn_apply.pack(side="left")
+        r.add(self.btn_apply)
         self.btn_restore = RoundedButton(r, "Restore previous artwork", lambda: self.confirm_and_run("restore"))
-        self.btn_restore.pack(side="left", padx=px(10))
+        r.add(self.btn_restore, px(10))
         r2 = self._row(body, pady=px(2))
         self.btn_reset = RoundedButton(r2, "Reset to Steam's default art", self.start_reset, quiet=True)
         self.btn_reset.pack(side="left")
@@ -1677,9 +2060,9 @@ class App(tk.Tk):
             accounts, who = [], ""
         self.acc_label.configure(text="Steam account: %s" % _short(who) if who else "")
         if len(accounts) > 1:
-            self.btn_account.pack(side="left", padx=px(12))
+            self.acc_row.add(self.btn_account, px(12))
         else:
-            self.btn_account.pack_forget()
+            self.acc_row.remove(self.btn_account)
         if not who:
             self.acc_row.pack_forget()
 
@@ -1979,6 +2362,8 @@ def selftest():
                 "platform frame missing: %s" % platform["id"]
         if sys.platform.startswith("win"):
             cw.load_api_key()  # also checks that the packaged Windows credential backend loads
+        assert os.path.exists(sc.FAMILY_CORNER), "family corner image missing: %s" % sc.FAMILY_CORNER
+        assert os.path.exists(sc.DEFAULT_ART), "default art missing: %s" % sc.DEFAULT_ART
         restore_child_env()
         assert sc._ssl_context().cert_store_stats()["x509_ca"] > 0, "no trusted certificates loaded: secure connections to Steam would fail"
         if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
@@ -1990,6 +2375,18 @@ def selftest():
             im = Image.open(out)
             assert im.size == (600, 900), "bad size %s" % (im.size,)
             assert im.getpixel((300, 500))[:3] == (200, 60, 60), "art window not filled"
+            assert sc.cover_colour(out) == (0, 100, 100), "the cover does not record its colour"
+            blue = sc.preview_cover(0).getpixel((7, 450))
+            turned = sc.preview_cover(134)
+            assert turned.size == (600, 900) and turned.getpixel((7, 450)) != blue, "the case colour cannot be changed"
+            assert sc.preview_cover(0, sat=0, val=14).getpixel((7, 450)) != blue, "the case cannot be made black"
+            black = os.path.join(d, "b.png")
+            sc.build_cover(src, black, sc.load_frame(0, sat=0, val=14), sat=0, val=14)
+            assert sc.is_steamcase_cover(black), "a black cover is not recognised as ours"
+            done = os.path.join(d, "d.png")                       # the cover of a game at 100% achievements
+            sc.build_cover(src, done, sc.load_frame(0), treatment="ribbon")
+            assert sc.cover_treatment(done) == "ribbon", "a 100% cover does not record its style"
+            assert sc.is_steamcase_cover(done), "a 100% cover is not recognised as ours"
         print("selftest ok")
         return 0
     except Exception as e:

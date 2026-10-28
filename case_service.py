@@ -37,6 +37,7 @@ class CoverItem:
     source: str = "Steam CDN"
     preview: str | None = None
     status: str = "Queued"
+    platinum: bool = False
 
     @property
     def key(self):
@@ -56,6 +57,7 @@ class AppSettings:
         self.account = None
         self.userdata = None
         self.platform_choices = {}
+        self.platinum_choices = {}
         self.library_splitter_sizes = [310, 430]
         self.load()
 
@@ -79,6 +81,10 @@ class AppSettings:
                 self.platform_choices = {key: value for key, value in choices.items()
                                          if isinstance(key, str) and len(key) <= 80 and
                                          isinstance(value, str) and value in platforms}
+            choices = data.get("platinum_choices")
+            if isinstance(choices, dict):
+                self.platinum_choices = {key: True for key, value in choices.items()
+                                         if isinstance(key, str) and len(key) <= 80 and value is True}
             sizes = data.get("library_splitter_sizes")
             if (isinstance(sizes, list) and len(sizes) == 2 and
                     all(type(value) is int and 100 <= value <= 10000 for value in sizes)):
@@ -91,6 +97,7 @@ class AppSettings:
         data = {"export_dir": self.export_dir, "default_source": self.default_source,
                 "restart_steam": self.restart_steam, "account": self.account,
                 "userdata": self.userdata, "platform_choices": self.platform_choices,
+                "platinum_choices": self.platinum_choices,
                 "library_splitter_sizes": self.library_splitter_sizes}
         fd, temporary = tempfile.mkstemp(prefix=".settings-", dir=self.path.parent)
         try:
@@ -125,6 +132,18 @@ class CaseService:
         key = "%s:%s" % (game.source, game.id or game.name)
         if self.settings.platform_choices.get(key) != platform:
             self.settings.platform_choices[key] = platform
+            self.settings.save()
+
+    def platinum_for(self, game):
+        return self.settings.platinum_choices.get("%s:%s" % (game.source, game.id or game.name), False)
+
+    def remember_platinum(self, game, enabled):
+        key = "%s:%s" % (game.source, game.id or game.name)
+        if enabled and not self.settings.platinum_choices.get(key):
+            self.settings.platinum_choices[key] = True
+            self.settings.save()
+        elif not enabled and key in self.settings.platinum_choices:
+            del self.settings.platinum_choices[key]
             self.settings.save()
 
     def library_json(self):
@@ -223,24 +242,33 @@ class CaseService:
     def preview(self, item):
         if item.file:
             cw.validate_local_image(item.file)
-            return Path(item.file)
+            if not item.platinum:
+                return Path(item.file)
+            import hashlib
+            digest = hashlib.sha256((item.file + str(Path(item.file).stat().st_mtime_ns)).encode()).hexdigest()[:16]
+            files, errors = cw.export_many([{"file": item.file, "name": item.game.name,
+                                            "platinum": True}], cw.cache_dir() / "qt-previews" / digest)
+            if errors:
+                raise sc.SteamcaseError(errors[0][1])
+            return files[0]
         if not item.image:
             raise sc.SteamcaseError("Choose artwork first.")
         # Separate folders prevent an older worker from replacing a newer preview.
         import hashlib
-        digest = hashlib.sha256((item.platform + item.image).encode()).hexdigest()[:16]
+        digest = hashlib.sha256((item.platform + item.image + str(item.platinum)).encode()).hexdigest()[:16]
         return cw.export_one(item.image, item.platform, item.game.name,
-                             cw.cache_dir() / "qt-previews" / digest, item.game.steam_id)
+                             cw.cache_dir() / "qt-previews" / digest, item.game.steam_id, item.platinum)
 
     def export_one(self, item, folder=None):
         if item.file:
-            files, errors = cw.export_many([{"file": item.file, "name": item.game.name}],
+            files, errors = cw.export_many([{"file": item.file, "name": item.game.name,
+                                            "platinum": item.platinum}],
                                            folder or self.settings.export_dir)
             if errors:
                 raise sc.SteamcaseError(errors[0][1])
             return files[0]
         return cw.export_one(item.image, item.platform, item.game.name,
-                             folder or self.settings.export_dir, item.game.steam_id)
+                             folder or self.settings.export_dir, item.game.steam_id, item.platinum)
 
     def add(self, item):
         if not item.file and not item.image:
@@ -253,7 +281,7 @@ class CaseService:
 
     def export_all(self, folder=None):
         items = [{"name": item.game.name, "platform": item.platform, "image": item.image,
-                  "file": item.file, "steam_id": item.game.steam_id}
+                  "file": item.file, "steam_id": item.game.steam_id, "platinum": item.platinum}
                  for item in self.queue.values()]
         return cw.export_many(items, folder or self.settings.export_dir)
 
@@ -305,8 +333,16 @@ class CaseService:
             for item in chosen:
                 report(item.key, "Preparing")
                 try:
-                    path = (Path(item.file) if item.file else
-                            cw.export_one(item.image, item.platform, item.game.name, stage, item.game.steam_id))
+                    if item.file and item.platinum:
+                        prepared, errors = cw.export_many([{"file": item.file, "name": item.game.name,
+                                                            "platinum": True}], stage)
+                        if errors:
+                            raise sc.SteamcaseError(errors[0][1])
+                        path = prepared[0]
+                    else:
+                        path = (Path(item.file) if item.file else
+                                cw.export_one(item.image, item.platform, item.game.name, stage,
+                                              item.game.steam_id, item.platinum))
                     cw.validate_local_image(path)
                     if int(sc.appid_of(str(path)) or 0) != item.game.steam_id:
                         raise sc.SteamcaseError("Prepared cover has the wrong Steam ID.")
