@@ -1,0 +1,7 @@
+# Logo SVGs and their manifest are hash-checked; keep their bytes identical on every OS.
+assets/logos/** -text
+# Binary assets
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary

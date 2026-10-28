@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+ <title>Case Covers app icon</title>
+ <rect x="16" y="16" width="480" height="480" rx="98" fill="#132336" stroke="#354d64" stroke-width="7"/>
+ <rect x="68" y="107" width="210" height="323" rx="22" fill="#7a6ce2"/>
+ <rect x="82" y="125" width="182" height="289" rx="10" fill="#302c61"/>
+ <path d="M89 125h168a7 7 0 0 1 7 7v32H82v-32a7 7 0 0 1 7-7z" fill="#a69bff"/>
+ <rect x="237" y="92" width="208" height="323" rx="22" fill="#ffab66"/>
+ <rect x="250" y="109" width="180" height="290" rx="10" fill="#543342"/>
+ <path d="M257 109h166a7 7 0 0 1 7 7v32H250v-32a7 7 0 0 1 7-7z" fill="#ffd09b"/>
+ <rect x="131" y="56" width="257" height="400" rx="25" fill="#081622"/>
+ <rect x="139" y="64" width="241" height="384" rx="21" fill="#56c1eb"/>
+ <rect x="151" y="76" width="217" height="360" rx="13" fill="#17283c"/>
+ <path d="M164 76h191a13 13 0 0 1 13 13v45H151V89a13 13 0 0 1 13-13z" fill="#75d7f3"/>
+ <rect x="166" y="153" width="187" height="237" rx="6" fill="#244666"/>
+ <circle cx="300" cy="211" r="31" fill="#ffca75"/>
+ <path d="M166 349l59-82 42 53 39-50 47 69v51H166z" fill="#756ed3"/>
+ <path d="M166 379l54-57 48 48 41-45 44 45v20H166z" fill="#373e83"/>
+ <rect x="166" y="405" width="187" height="16" rx="7" fill="#75d7f3"/>
+</svg>

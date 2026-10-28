@@ -1,0 +1,614 @@
+{
+  "source_revision": "1de47931607ddf83cbc982d776b68e6cc3864ad7",
+  "files": [
+    {
+      "file": "assets/logos/ps1/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation-20.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation.png",
+      "sha256": "da1b908445efd7b7c7fef46999115bc6bbaefba53413430788561187538b44fd",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps1/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation-24.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation.png",
+      "sha256": "bd5f296da71e6f1fec7286c10c0688d46bf6343500176a86cd771e4ed4622020",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps1/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation-02.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation.png",
+      "sha256": "256b35725255b170a0157d46ba0cc6e4fc9ed032f58c3a649f291148493b53aa",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps2/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%202-30.svg",
+      "sha256": "1f53375baf5f1aaf7a6f13f4958d169c09abbb88bf00ba73059411e0b1460a42",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps2/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%202-31.svg",
+      "sha256": "1db045b2773fe2ad054bcc2887442cc40d003c939be869d3504ad60e123fbda8",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps2/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%202-30.svg",
+      "sha256": "1f53375baf5f1aaf7a6f13f4958d169c09abbb88bf00ba73059411e0b1460a42",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps3/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%203-%2C09.svg",
+      "sha256": "18e03267de0eda7533b227ec39177ba8744813a4c4822e0ddefec1240f4a7058",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps3/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%203-%2C03.svg",
+      "sha256": "2244ff3642a46610f30056c32b74049cae188e1ac90b506c971f1e6b4031535a",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps3/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%203-%2C09.svg",
+      "sha256": "18e03267de0eda7533b227ec39177ba8744813a4c4822e0ddefec1240f4a7058",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps4/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%204-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%204.png",
+      "sha256": "729842b7b2cb7410880aa7ee5631648910a5b92e29d8f4cab4ecc21998dc0e58",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps4/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%204-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%204.png",
+      "sha256": "291bdf35041f61a9bc3a5b95db2c5e34db260a2add8a982f8c369e855556591f",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps4/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%204-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%204.png",
+      "sha256": "729842b7b2cb7410880aa7ee5631648910a5b92e29d8f4cab4ecc21998dc0e58",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps5/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%205-05.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sony%20Playstation%205.png",
+      "sha256": "c781378fc588b773ce3e33594ba1af0d9217f07546b2405f40d7901439c15fdd",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps5/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%205-04.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sony%20Playstation%205.png",
+      "sha256": "a7f403d982eb4850617f61aeda3a77eda9f86ef421d790917014fba5f0d7a9ec",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps5/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%205-05.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sony%20Playstation%205.png",
+      "sha256": "c781378fc588b773ce3e33594ba1af0d9217f07546b2405f40d7901439c15fdd",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/psp/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Sony%20PSP-16.svg",
+      "sha256": "a009ead9e604c3b4ed82b078033421b4d3ea263118a63faf471f3e238998f15b",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/psp/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Sony%20PSP-08.svg",
+      "sha256": "1cdf27edf95d775b3d762de354a82702b7885776b6beedc800d64156e0914328",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/psp/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Sony%20PSP-16.svg",
+      "sha256": "a009ead9e604c3b4ed82b078033421b4d3ea263118a63faf471f3e238998f15b",
+      "license": "MIT; trademarks retained",
+      "selection_note": "Standalone original wordmark, without the secondary platform name."
+    },
+    {
+      "file": "assets/logos/ps_vita/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Sony%20PlayStation%20Vita.-04.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Sony%20PS%20Vita.png",
+      "sha256": "f67941d26948c3f34188d49a244f3a54c84afe99fa11fe06b907f4247d553c0e",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps_vita/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Sony%20PlayStation%20Vita.-02.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Sony%20PS%20Vita.png",
+      "sha256": "9681df129b5c967cb8bc5abdb0ab835d3a716161bbc0f49f05894a5fc5aec021",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/ps_vita/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Sony%20PlayStation%20Vita.-04.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Sony%20PS%20Vita.png",
+      "sha256": "f67941d26948c3f34188d49a244f3a54c84afe99fa11fe06b907f4247d553c0e",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox---03.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox.png",
+      "sha256": "07249858ffc673b5c2743ad06ebd5cdb5806302619951f94bc073f1f0d01efa1",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox---02.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox.png",
+      "sha256": "e82b4dcaea04e65b40954e9dcd370fc0dc76992daae338de2b457f42ee895d79",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox-06.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox.png",
+      "sha256": "9e3a2117b777f8829b0c5526b11215f9b95b38bf7511207855d3f6a2d747a545",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_360/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20360-02.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20360.png",
+      "sha256": "682aa55f09097c3769b70991e3ef213cb58db370d4ca90598b3e0167be783bb2",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_360/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20360-01.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20360.png",
+      "sha256": "d96bbb56ac58ffa36717b5a68f489cc08433bd1378371d9076aada8e1d36686c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_360/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20360..7-01.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20360.png",
+      "sha256": "f9d83625671a7713f08924bb0c59c2dba6f97cc98b3aa9bf4ecb1f83216d5e81",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_one/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20One-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20One.png",
+      "sha256": "746e63fa2bfda70c13a36c64254bb692d13cd94b515d122bc288c5c94ee076e3",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_one/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20One-09.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20One.png",
+      "sha256": "f4d07d2ea1433469cf965240319b82c6508248b211bc16acca1815abc8e58816",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_one/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20One.-01.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20One.png",
+      "sha256": "6e36d76d72f1d4b6c21aecbcc8fe5760bac0c0494904b4129e67d0fd02d0f53f",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_series/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20Series%20-30.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Microsoft%20Xbox%20Series.png",
+      "sha256": "1a1b12388b211d0dbbc912260473e36e8b15a6b140068fcf9ede190ae653fac0",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_series/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20Series%20-23.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Microsoft%20Xbox%20Series.png",
+      "sha256": "14e627daf5a695a367021eac47a8f542bf9de893c4e92958e7cda52d2d33c45c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/xbox_series/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20Series%20-03.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Microsoft%20Xbox%20Series.png",
+      "sha256": "14e5deca406c29ff54a7a7b785386192804a75a01da910758be2db1fb96fed93",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nes/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Entertainment%20System-1-06.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Entertainment%20System.png",
+      "sha256": "c683f8749f185c6b618968e4b12d4c64b109e951ffe9443f26c138cd93e8886e",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nes/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Entertainment%20System-1-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Entertainment%20System.png",
+      "sha256": "f200622ebae33bd14ec98d6611c544fc5f7e6d23722fa57ae6ae84b392baa2d8",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nes/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Entertainment%20System-03.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Entertainment%20System.png",
+      "sha256": "335ef20c95c2b6b8fba42c3f62183a92c21d1d217fed80b3632b51b812cd0255",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/snes/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Super%20Nintendo%20Entertainment%20System-1-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Super%20Nintendo%20Entertainment%20System.png",
+      "sha256": "b27f9555f9ae30d599bdaf7d90ca3298c4bbf4a983e42201631ddf137ac6d833",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/snes/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Super%20Nintendo%20Entertainment%20System-1-24.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Super%20Nintendo%20Entertainment%20System.png",
+      "sha256": "bc575ed6f0ea5e21229dac9213968ccaa143d1429a655bfcc1e541d41a678a51",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/snes/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Super%20Nintendo%20Entertainment%20System-15.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Super%20Nintendo%20Entertainment%20System.png",
+      "sha256": "4883d312cabff885468338f98f04e85c163600973a17cc5c5e783665e219faa8",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/n64/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%2064-15.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%2064.png",
+      "sha256": "aa33a2bfdf08272cb18665a2f72fd9af4557d9f806b181e188b51b0e0586dde7",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/n64/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%2064-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%2064.png",
+      "sha256": "37a2df1a703b1f4610975bb25d8bc325c458e3d4a88922e8ba5925ec17ae6a71",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/n64/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%2064-09.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%2064.png",
+      "sha256": "1fc8c45c12531b7df05b2b081bc549d79759464a138ab947f1a2e1aba320561f",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/gamecube/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20GameCube-14.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20GameCube.png",
+      "sha256": "895ca81cfb5a876d53b5e57976c3237c57982728416efc859e9368000a386573",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/gamecube/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20GameCube-18.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20GameCube.png",
+      "sha256": "7fad739b58d0440e4a0c942a56c9b9248839b21b887e65eb16f5cfd45250a1a9",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/gamecube/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20GameCube-08.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20GameCube.png",
+      "sha256": "64b17c2a199d73e48aab071ef63f3facdedcc13dcb6b2510c24020b97fdc07b5",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Wii-08.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Wii.png",
+      "sha256": "d23529c2ebc193d4dc1059f6f2b7bd97745245b8692296ccebf2458b18ba944c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Wii-12.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Wii.png",
+      "sha256": "697646d8e0f05240ca5451ec0d041dc026e06736b783d8afe8eeb86f98c74088",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Wii-04.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Wii.png",
+      "sha256": "1454cd28f86853ab07b04d5a551a8722a04efa809e97404aad3ecd49916019e8",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii_u/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Wii%20U-17.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Wii%20U.png",
+      "sha256": "499b12049d55b0986e674207379b9aa0c602c81359eb62581a688156d3352443",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii_u/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Wii%20U-19.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Wii%20U.png",
+      "sha256": "dc8e308346c2d0c476fe169f78b24fcae9d828447193985c1ac49364bff03b3f",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/wii_u/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Wii%20U-15.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Wii%20U.png",
+      "sha256": "55791c7f82868633ddcffd639640b06d5a48062db661f843c425e21bc0c58e47",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/switch/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Switch-30.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Nintendo%20Switch.png",
+      "sha256": "e55c6f8288efa4c3ae54721a013acb27633025d5920bb85c5d24126764d54791",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/switch/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Switch-32.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Nintendo%20Switch.png",
+      "sha256": "a970eca19e5f883fb5069fddbda8547869eca6465603023d45b971922262eb2a",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/switch/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Switch-28.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Nintendo%20Switch.png",
+      "sha256": "9f892ca1537b8cf7a50fd1ad8e64f16fdc198df70785849ac244a86d8a616035",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/switch_2/light.svg",
+      "source": "https://commons.wikimedia.org/wiki/File:Nintendo_Switch_2_logo_transparent.svg",
+      "recommended": null,
+      "sha256": "04fc5c258200678f287004ece33debc5c263db502e939abd1e427dfbedf24242",
+      "license": "Commons PD-textlogo; Nintendo trademark"
+    },
+    {
+      "file": "assets/logos/game_boy/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy_-27.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy.png",
+      "sha256": "0b175696233945ac59aa2dd558f7a61e3407bf8acd7835bf97f9518f4695d5e0",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy_-25.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy.png",
+      "sha256": "05b8157ba8ab86abeed6c838098ca0f6424aa2473cc3379c36ea9e331efdf031",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy-13.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy.png",
+      "sha256": "6da6eb7a6403d40b859535ab1ab5b79c1b887e67db34dda62765e3573f802f5c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_color/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy%20Color-12.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy%20Color.png",
+      "sha256": "6c0030799ef60b3eb5184bcec883fd619452d190e73190cbba4397bd935f84ab",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_color/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy%20Color-11.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy%20Color.png",
+      "sha256": "8257db4c51f82fb1015d9d3306ef92788a52221a7e69b2cb16060cf30b310a7a",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_color/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy%20Color.-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy%20Color.png",
+      "sha256": "615a13fb09fb11723816cadbcdebd155bb2c953f50c785853f4909803fb0c2fc",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_advance/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy%20Advance-24.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20Game%20Boy%20Advance.png",
+      "sha256": "8ca77735902dd590df898e51b8d86cb551d0a3108326791f4313deea8b5e18a1",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_advance/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy%20Advance-30.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20Game%20Boy%20Advance.png",
+      "sha256": "3508d21711a9c5104dd0cccc94feb613323cfa88ecd93037bc0bc015d6e5d8e6",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/game_boy_advance/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy%20Advance-02.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20Game%20Boy%20Advance.png",
+      "sha256": "00cae9d03e89de3b8050e3fb386d03aed71776c0bb54c447cdc2c823c0142cac",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_ds/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20DS-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%20DS.png",
+      "sha256": "6ecd1e95e19ce886e9ddd6a5d5b9262613f6d60c36a80ce6ccc9671351a93d24",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_ds/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20DS-09.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%20DS.png",
+      "sha256": "2895bc7f7b9b3a49d3ecdc262838cb24b5b67f25cfbf14df48c910d40a27934e",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_ds/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20DS-08.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%20DS.png",
+      "sha256": "2171301c9e51b3b85651ecfc2d7211c2224832213b47ea54ae7b214001837056",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_3ds/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%203DS-15.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Handhelds/Nintendo%203DS.png",
+      "sha256": "096e0222adde051d5a48dbc454c8b198da44b5b20e73c0cec78c3583487b96cf",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_3ds/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%203DS-11.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Handhelds/Nintendo%203DS.png",
+      "sha256": "b9a603a6f552ddea39b5c76b6baf836437861e9de360d09f181311b2f524e806",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/nintendo_3ds/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%203DS-22.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Handhelds/Nintendo%203DS.png",
+      "sha256": "af95d19ec00ff168097124aead426378b79835c3ed9656bdbe750fa743a3d1f8",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/master_system/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Master%20System%2C-11.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Master%20System.png",
+      "sha256": "268d8ddf8f9e4d0413b521bb116e5fc28216e87201d8ced0b523ad7f043cbaf2",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/master_system/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Master%20System%2C-07.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Master%20System.png",
+      "sha256": "39dc0559fdb33b6dedf00a8d8b788e4b057383da63dae68a34a0fda8c939b246",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/master_system/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Master%20System%2C-22.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Master%20System.png",
+      "sha256": "9856bac9b57eeaf2a08155d21f047d60e93898a5f2b54d600a754c94a7fde65d",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Mega%20Drive-20.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Mega%20Drive.png",
+      "sha256": "3b69c81882e0bbf470a89b55b7d32343969ce927623c95e8d24317e6fbf8caa7",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Mega%20Drive-09.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Mega%20Drive.png",
+      "sha256": "b273184bda04d2e529e1bbb91c25048d6fccab1645862204383be0bf8b696ae4",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Mega%20Drive.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Mega%20Drive.png",
+      "sha256": "cc9e55ce07aafbb5a2b40f5e4d877d9720bd7eb35387ca2b3ef26098888d0fa9",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/genesis_light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Genesis-17.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Genesis.png",
+      "sha256": "68b3220cf32981d14c559f3945ded13f3c48370cef0a9853a910f60ca1e145e7",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/genesis_dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Genesis.-01.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Genesis.png",
+      "sha256": "4438a9833db2ea948272a79505f9411f479aac15fee7c840bade17648008c846",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/mega_drive/genesis_colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Genesis.2-01.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Genesis.png",
+      "sha256": "3e4aa1c1763200420ff2135c01d226e21e1939cb05464003bf05afedd9aa7a4c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/saturn/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Saturn%27-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Saturn.png",
+      "sha256": "628e64f885e00ec1e92ce4deba37e420352e30db0bd713fba196913e056492a3",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/saturn/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Saturn%27-04.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Saturn.png",
+      "sha256": "f7fff1bff990d0d57c8fdd64754029b27ba622a314d0a6cae686d2482d3a409c",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/dreamcast/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Dreamcast.-08.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Consoles/Sega%20Dreamcast.png",
+      "sha256": "1215cc28a244261379baea2f6bc5eb52762dd2e0c25c171d4d265f0cfca79d50",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/dreamcast/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Dreamcast.-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Consoles/Sega%20Dreamcast.png",
+      "sha256": "319c895ec34e3e6426d118fdd1a0ded178d1e4b84469b9021988b36aaad5d198",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/dreamcast/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Dreamcast.-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Consoles/Sega%20Dreamcast.png",
+      "sha256": "098491f9bdcea55d90ff5919d2adeb9b66da317edaa930ce5270f7dbaeec1e30",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/steam/light.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Just%20White/Computers/Steam%201-16.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Just%20White/Computers/Steam.png",
+      "sha256": "b3810596016392b692c2cf1e52eb9da3dc17a5adb5bd428916c3808842e508b6",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/steam/dark.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Dark%20-%20Just%20Black/Computers/Steam%201-15.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Dark%20-%20Just%20Black/Computers/Steam.png",
+      "sha256": "6f28d37c74e34df867b9e3f7c29d5099d9e1c426cb282d9154dad3344bbd9c87",
+      "license": "MIT; trademarks retained"
+    },
+    {
+      "file": "assets/logos/steam/colored.svg",
+      "source": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/SVGs%20%28vector%29%20%28Full%20Set%29%20v2.1/Light%20-%20Color/Computers/Steam%201-10.svg",
+      "recommended": "https://raw.githubusercontent.com/PRO100BYTE/console-logos/1de47931607ddf83cbc982d776b68e6cc3864ad7/Recommended%20Versions%20%28Normal%29%20%281%20Per%20Platform%29%20v2.1/Light%20-%20Color/Computers/Steam.png",
+      "sha256": "76721041f02c2fe5a504af3b450ee86c3eeca4d47577f50cb579f4bf56a9c9f6",
+      "license": "MIT; trademarks retained"
+    }
+  ]
+}
