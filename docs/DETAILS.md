@@ -140,3 +140,24 @@ Covers already made are on SteamGridDB: <https://www.steamgriddb.com/profile/765
 No. The window works fully with the keyboard (Tab, Space, Enter), but the toolkit it uses can't talk to screen readers. The command line is the accessible alternative.
 
 </details>
+
+## Tkinter completion highlights
+
+### Saved games page
+
+Step 2 has an optional block, **Highlight my 100% games**. Games where you unlocked every achievement get a rosette at the top right, on top of the platform badges, and a "100% Complete" ribbon at the bottom. It works like step 1: the app cannot see your achievements by itself, so you save one more page from your own browser.
+
+1. Click **Open my games page** (or **Copy link**). Your browser opens your Steam games page, sorted by achievements. Log in if it asks and wait until your games have loaded.
+2. Save it (Ctrl+S, or Cmd+S on a Mac) as **"Webpage, Complete"** in Chrome or Firefox, named `games.html`. Your browser also saves a folder next to it. The app notices the file in your Downloads folder by itself, or you can click **Browse…** and pick it.
+3. Choose how those games look: **Gold case** (the whole case turns gold), **Gold border** (a gold border around the outside of the case, which becomes about 5% smaller), **Normal case with ribbon** (your case stays as it is; this is the default once a page is loaded) or **No special case**. The choice can be picked once a page is loaded. Then click **Make covers**.
+
+> [!NOTE]
+> The saved page contains a temporary login token for your Steam account. The app only reads which games are at 100%: it never uses, stores or logs the token. You can delete `games.html` and its folder once the covers are made. The app never deletes your files itself.
+
+Good to know:
+
+* Only games that are already in your step 1 list can be highlighted.
+* Steam's page shows progress only for games where you have unlocked at least one achievement. That is why only games at 100% are marked: there are no marks for games you have only started.
+* Switching the choice, or saving the page again after you finish another game and clicking **Make covers**, rebuilds only the covers that change. If you make covers without loading a page, covers that are already highlighted keep their highlight.
+* The page lists most of a library but not all of it. On the author's library it listed about 99% of the covers (509 of 515): a few old, free or hidden games are not on it and cannot be highlighted.
+* This was only tried with Chrome, on Linux, with Steam set to Portuguese and to English; the saved pages gave exactly the same result. Firefox is expected to save the page the same way, and the app reads the progress without depending on the language of Steam's label, but other languages and browsers were not tested. Windows and macOS were not tested either, and neither was a real touchscreen.

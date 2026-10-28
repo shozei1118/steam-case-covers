@@ -5,16 +5,30 @@
 Everything here is drawn on a Canvas because the built-in widgets cannot be rounded.
 All of them take Tab focus, show a white focus ring, and react to Space / Enter.
 """
+import base64
+import io
 import tkinter as tk
 import tkinter.font as tkfont
+
+try:
+    from PIL import Image, ImageDraw
+except ImportError:                       # the app still works without Pillow, with rougher corners
+    Image = ImageDraw = None
 
 BG, CARD, CARD2 = "#11151c", "#182433", "#22344a"
 LINE, FG, MUTED, FAINT = "#2c4259", "#e6edf3", "#93a7bb", "#7d92a8"      # FAINT: 4.5:1 on CARD, it carries real text (locked steps, hints)
 EDGE = "#5d7a96"           # outline of controls and off switches: 3:1 against CARD, so the control is visible without its label
 ACCENT, ACCENT_H, ACCENT_D, DARK = "#66c0f4", "#8fd3ff", "#45a5dc", "#0b141d"
-GREEN, RED = "#5ba32b", "#ff7b72"
+GREEN, RED, AMBER = "#5ba32b", "#ff7b72", "#f0b429"
+RING = "#ffffff"           # keyboard focus ring and the on-state knob
+RAISED_H = "#2b405a"       # hover fill of an outlined button
+OFF_FILL, OFF_EDGE = "#26384b", "#223244"            # disabled controls: present, but clearly unavailable (exempt from the 3:1 rule)
+OFF_TRACK_ON, OFF_KNOB = "#2a5a78", "#8a9bab"        # disabled switch, on and off knob
+INSET, INSET_EDGE = "#0c1219", "#1f2e3f"             # progress track
+TIP_BG = "#0b1017"
 
 _scale = 1.0
+_dragging = False       # True while a finger/mouse drag is scrolling the page: controls under it must not fire a click
 REF_LINE = 21.0        # line height of the 11 pt default font on a 96 dpi screen
 
 
@@ -30,11 +44,45 @@ def px(n):
     return int(round(n * _scale))
 
 
-def round_rect(c, x1, y1, x2, y2, r, **kw):
+def _rgb(color):
+    return None if not color else tuple(int(color[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+
+
+_png_cache = {}
+
+
+def _shape_png(w, h, r, fill, outline, width):
+    """Anti-aliased rounded rectangle as base64 PNG: drawn at 2x to 4x size, then scaled down. Tk's canvas does not smooth its own shapes."""
+    key = (w, h, r, fill, outline, width)
+    data = _png_cache.get(key)
+    if data is None:
+        k = 4 if w * h < 90000 else 2
+        im = Image.new("RGBA", (w * k, h * k), (0, 0, 0, 0))
+        ImageDraw.Draw(im).rounded_rectangle([0, 0, w * k - 1, h * k - 1], radius=r * k, fill=_rgb(fill),
+                                             outline=_rgb(outline) if outline else None, width=max(1, width * k))
+        buf = io.BytesIO()
+        im.resize((w, h), Image.LANCZOS).save(buf, "PNG")
+        data = base64.b64encode(buf.getvalue())
+        if len(_png_cache) > 400:
+            _png_cache.clear()
+        _png_cache[key] = data
+    return data
+
+
+def round_rect(c, x1, y1, x2, y2, r, fill="", outline="", width=1, tags=()):
+    """Draw a rounded rectangle (a pill when r is half the height). Smooth when Pillow is available."""
     r = max(1, min(r, (x2 - x1) // 2, (y2 - y1) // 2))
-    pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2, x2 - r, y2,
-           x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
-    return c.create_polygon(pts, smooth=True, **kw)
+    w, h = int(x2 - x1), int(y2 - y1)
+    if Image is None or w < 2 or h < 2:
+        pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2, x2 - r, y2,
+               x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+        return c.create_polygon(pts, smooth=True, fill=fill, outline=outline, width=width, tags=tags)
+    img = tk.PhotoImage(master=c, data=_shape_png(w, h, r, fill, outline, width))
+    keep = c.__dict__.setdefault("_shape_imgs", [])
+    keep.append(img)                                  # Tk drops an image nobody references
+    if len(keep) > 60:
+        del keep[:30]
+    return c.create_image(int(x1), int(y1), image=img, anchor="nw", tags=tags)
 
 
 class _Stateful(tk.Canvas):
@@ -86,7 +134,7 @@ class Tooltip:
         self.tip.wm_geometry("+%d+%d" % (x, y))
         frame = tk.Frame(self.tip, bg=ACCENT, padx=1, pady=1)
         frame.pack()
-        tk.Label(frame, text=self.text, justify="left", wraplength=px(360), bg="#0b1017", fg=FG, padx=px(12), pady=px(10)).pack()
+        tk.Label(frame, text=self.text, justify="left", wraplength=px(360), bg=TIP_BG, fg=FG, padx=px(12), pady=px(10)).pack()
 
     def hide(self, _e=None):
         if self._job is not None:
@@ -101,21 +149,27 @@ class InfoBadge(tk.Canvas):
     """Round "i" badge with a Tooltip."""
 
     def __init__(self, parent, text, bg=CARD):
-        s = px(36)
+        s = px(48)             # touch target: the visible disc stays small, the hit area does not
         super().__init__(parent, width=s, height=s, bg=bg, highlightthickness=0, takefocus=True, cursor="hand2")
-        self.disc = self.create_oval(px(8), px(8), s - px(8), s - px(8), fill=ACCENT, outline="")
+        self._paint(ACCENT)
         self.create_text(s // 2, s // 2, text="i", fill=DARK, font=("TkDefaultFont", 11, "bold"))
         self.ring = None
-        self.bind("<Enter>", lambda e: self.itemconfigure(self.disc, fill=ACCENT_H), add="+")
-        self.bind("<Leave>", lambda e: self.itemconfigure(self.disc, fill=ACCENT), add="+")
+        self.bind("<Enter>", lambda e: self._paint(ACCENT_H), add="+")
+        self.bind("<Leave>", lambda e: self._paint(ACCENT), add="+")
         self.bind("<FocusIn>", self._focus_in, add="+")
         self.bind("<FocusOut>", self._focus_out, add="+")
         self.bind("<Button-1>", lambda e: self.focus_set())
         Tooltip(self, text)
 
+    def _paint(self, fill):
+        s = px(48)
+        self.delete("disc")
+        round_rect(self, px(14), px(14), s - px(14), s - px(14), s, fill=fill, tags="disc")
+        self.tag_lower("disc")
+
     def _focus_in(self, _e):
-        s = px(36)
-        self.ring = self.create_oval(px(5), px(5), s - px(5), s - px(5), outline="#ffffff", width=2)
+        s = px(48)
+        self.ring = round_rect(self, px(11), px(11), s - px(11), s - px(11), s, outline=RING, width=2)
 
     def _focus_out(self, _e):
         if self.ring:
@@ -148,16 +202,16 @@ class RoundedButton(_Stateful):
         w, h = int(super().cget("width")), int(super().cget("height"))
         on = self.enabled
         if self.primary:
-            fill = (ACCENT_D if self._down else ACCENT_H if self._hover else ACCENT) if on else "#26384b"
+            fill = (ACCENT_D if self._down else ACCENT_H if self._hover else ACCENT) if on else OFF_FILL
             outline, fg = fill, DARK if on else FAINT
         elif self.quiet:
             fill = (LINE if self._down else CARD2 if self._hover else self._bg) if on else self._bg
             outline, fg = fill, (FG if self._hover else MUTED) if on else FAINT
         else:
-            fill = (LINE if self._down else "#2b405a" if self._hover else CARD2) if on else CARD
-            outline, fg = (EDGE if on else "#223244"), FG if on else FAINT
+            fill = (LINE if self._down else RAISED_H if self._hover else CARD2) if on else CARD
+            outline, fg = (EDGE if on else OFF_EDGE), FG if on else FAINT
         if self._focus and on:
-            round_rect(self, 1, 1, w - 1, h - 1, h // 2, outline="#ffffff", width=2, fill="")
+            round_rect(self, 1, 1, w - 1, h - 1, h // 2, outline=RING, width=2, fill="")
         round_rect(self, 4, 4, w - 4, h - 4, h // 2, fill=fill, outline=outline, width=1)
         self.create_text(w // 2, h // 2, text=self.text, font=self._font, fill=fg)
 
@@ -172,7 +226,7 @@ class RoundedButton(_Stateful):
     def _focus_out(self, _e): self._focus = False; self.draw()
 
     def _release(self, e):
-        was = self._down
+        was = self._down and not _dragging
         self._down = False
         self.draw()
         if was and 0 <= e.x <= self.winfo_width() and 0 <= e.y <= self.winfo_height():
@@ -188,13 +242,15 @@ class Switch(_Stateful):
 
     def __init__(self, parent, text, variable, command=None, state="normal", bg=CARD):
         self._font = tkfont.Font(font="TkDefaultFont")
-        super().__init__(parent, width=px(58) + self._font.measure(text) + px(6), height=max(px(40), self._font.metrics("linespace") + px(8)), bg=bg,
+        super().__init__(parent, width=px(58) + self._font.measure(text) + px(6), height=max(px(48), self._font.metrics("linespace") + px(8)), bg=bg,
                          highlightthickness=0, takefocus=True, cursor="hand2")
         self._init_state(state)
         self.text, self.variable, self.command = text, variable, command
         self._focus = False
         variable.trace_add("write", lambda *a: self.draw())
-        self.bind("<Button-1>", self._click)
+        self._armed = False
+        self.bind("<ButtonPress-1>", self._click)
+        self.bind("<ButtonRelease-1>", self._release)
         self.bind("<space>", self._key)
         self.bind("<Return>", self._key)
         self.bind("<FocusIn>", lambda e: self._set_focus(True))
@@ -212,13 +268,13 @@ class Switch(_Stateful):
         tw, th = px(44), px(24)
         x, y = px(3), (h - th) // 2
         on, val = self.enabled, bool(self.variable.get())
-        track = (ACCENT if val else "#4f6882") if on else ("#2a5a78" if val else "#26384b")
+        track = (ACCENT if val else EDGE) if on else (OFF_TRACK_ON if val else OFF_FILL)
         if self._focus and on:
-            round_rect(self, x - 3, y - 3, x + tw + 3, y + th + 3, th // 2 + 3, outline="#ffffff", width=2, fill="")
+            round_rect(self, x - 3, y - 3, x + tw + 3, y + th + 3, th // 2 + 3, outline=RING, width=2, fill="")
         round_rect(self, x, y, x + tw, y + th, th // 2, fill=track, outline=track)
         k = th - px(6)
         kx = x + tw - k - px(3) if val else x + px(3)
-        self.create_oval(kx, y + px(3), kx + k, y + px(3) + k, fill="#ffffff" if on else "#8a9bab", outline="")
+        round_rect(self, kx, y + px(3), kx + k, y + px(3) + k, k, fill=RING if on else OFF_KNOB)
         self.create_text(px(58), h // 2, text=self.text, anchor="w", font=self._font, fill=FG if on else FAINT)
 
     def toggle(self):
@@ -229,10 +285,258 @@ class Switch(_Stateful):
 
     def _click(self, _e):
         self.focus_set()
-        self.toggle()
+        self._armed = True
+
+    def _release(self, e):
+        armed, self._armed = self._armed, False
+        if armed and not _dragging and 0 <= e.x <= self.winfo_width() and 0 <= e.y <= self.winfo_height():
+            self.toggle()
 
     def _key(self, _e):
         self.toggle()
+        return "break"
+
+
+def value_from_x(x, width, margin, top):
+    """Value (0..top) for a pixel position on a slider track `width` wide whose ends are `margin` px inside the edges. Clamped."""
+    span = width - 2 * margin
+    if span <= 0:
+        return 0
+    return max(0, min(top, round((x - margin) * top / span)))
+
+
+def hue_from_x(x, width, margin):
+    """Hue (0..359 degrees) for a pixel position on a slider track; see value_from_x."""
+    return value_from_x(x, width, margin, 359)
+
+
+def drag_mode(dx, dy, threshold):
+    """What a pointer drag means once it has moved (dx, dy) pixels from where it started: None while it is still a tap, "horizontal" to slide the
+    thumb, "vertical" to scroll the page. A tie goes to the slider, so a sideways slide is never taken for a swipe."""
+    if max(abs(dx), abs(dy)) < threshold:
+        return None
+    return "horizontal" if abs(dx) >= abs(dy) else "vertical"
+
+
+def step_value(value, key, top, big=10, wrap=False):
+    """The value (0..top) after a key press on a slider: arrows move 1, PageUp/PageDown `big`, Home is 0, End is `top`. Arrows stop at the ends,
+    or wrap around when `wrap` is set."""
+    if key == "Home":
+        return 0
+    if key == "End":
+        return top
+    delta = {"Left": -1, "Down": -1, "Right": 1, "Up": 1, "Prior": big, "Next": -big}.get(key)
+    if delta is None:
+        return value
+    return (value + delta) % (top + 1) if wrap else max(0, min(top, value + delta))
+
+
+def step_hue(hue, key, big=30):
+    """The hue after a key press on the hue slider: like step_value over 0..359, and the arrows wrap around."""
+    return step_value(hue, key, 359, big, wrap=True)
+
+
+def step_choice(index, key, count):
+    """The option index (0..count-1) after a key press on a choice group: Left/Up one back, Right/Down one forward, Home the first, End the last.
+    It stops at the ends (no wrap)."""
+    if key == "Home":
+        return 0
+    if key == "End":
+        return count - 1
+    delta = {"Left": -1, "Up": -1, "Right": 1, "Down": 1}.get(key)
+    return index if delta is None else max(0, min(count - 1, index + delta))
+
+
+def _dim(color, amount=0.6, toward=CARD):
+    """A colour faded toward the card background: the look of a disabled control."""
+    a, b = _rgb(color), _rgb(toward)
+    return "#%02x%02x%02x" % tuple(round(x * (1 - amount) + y * amount) for x, y in zip(a[:3], b[:3]))
+
+
+def _rainbow_png(w, h, colors):
+    """A pill-shaped strip `w` x `h` whose column x is coloured colors[x], as base64 PNG (anti-aliased ends)."""
+    k = 3
+    strip = Image.new("RGB", (w, 1))
+    strip.putdata([_rgb(c)[:3] for c in colors])
+    big = strip.resize((w * k, h * k), Image.NEAREST).convert("RGBA")
+    mask = Image.new("L", (w * k, h * k), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w * k - 1, h * k - 1], radius=h * k // 2, fill=255)
+    big.putalpha(mask)
+    buf = io.BytesIO()
+    big.resize((w, h), Image.LANCZOS).save(buf, "PNG")
+    return base64.b64encode(buf.getvalue())
+
+
+class _Slider(_Stateful):
+    """Base of the colour sliders: picks an integer 0..TOP into a tk.IntVar over a track painted by `color_for(value)` ('#rrggbb').
+    A tap or a sideways drag sets the value; a mostly vertical swipe that starts on it scrolls the window instead (so a finger on its way to the
+    button below does not recolour the covers). Arrows, PageUp/PageDown, Home and End work from the keyboard."""
+
+    TOP, BIG, WRAP = 100, 10, False           # largest value, PageUp/PageDown step, whether the arrows wrap around
+
+    def __init__(self, parent, variable, color_for, command=None, state="normal", bg=CARD, depends=()):
+        super().__init__(parent, width=px(260), height=px(52), bg=bg, highlightthickness=0, takefocus=True, cursor="hand2")
+        self._init_state(state)
+        self.variable, self.color_for, self.command, self._bg = variable, color_for, command, bg
+        self._focus = False
+        self._start, self._mode = None, None                 # where the pointer went down, and what the drag turned out to be
+        self._track, self._track_key = None, None
+        self._repaint_job = None
+        variable.trace_add("write", lambda *a: self.draw())
+        for other in depends:                                # the track colours follow these variables
+            other.trace_add("write", lambda *a: self._repaint())
+        self.bind("<Configure>", lambda e: self.draw())
+        self.bind("<ButtonPress-1>", self._press)
+        self.bind("<B1-Motion>", self._motion)
+        self.bind("<ButtonRelease-1>", self._release)
+        for key in ("Left", "Right", "Up", "Down", "Prior", "Next", "Home", "End"):
+            self.bind("<%s>" % key, self._key)
+        self.bind("<FocusIn>", lambda e: self._set_focus(True))
+        self.bind("<FocusOut>", lambda e: self._set_focus(False))
+        self.configure(cursor="hand2" if state == "normal" else "arrow")
+        self.draw()
+
+    def _geometry(self):
+        w = self.winfo_width() if self.winfo_width() > 1 else int(super().cget("width"))
+        return w, int(super().cget("height")), px(36), px(36) // 2 + px(8)           # width, height, thumb size, margin of the thumb's centre
+
+    def _repaint(self):
+        """Rebuild the track once per burst of changes (a swatch sets three variables), when the window is next idle."""
+        if self._repaint_job is None:
+            self._repaint_job = self.after_idle(self._repaint_now)
+
+    def _repaint_now(self):
+        self._repaint_job = None
+        self._track_key = None
+        try:
+            self.draw()
+        except tk.TclError:                                  # the window closed in between
+            pass
+
+    def _set_focus(self, v):
+        self._focus = v
+        self.draw()
+
+    def draw(self):
+        self.delete("all")
+        w, h, thumb, margin = self._geometry()
+        on = self.enabled
+        track_h = px(48)
+        key = (w, track_h, on)
+        if self._track_key != key:
+            colors = [self.color_for(value_from_x(x, w, margin, self.TOP)) for x in range(w)]
+            if not on:
+                colors = [_dim(c) for c in colors]
+            self._track = tk.PhotoImage(master=self, data=_rainbow_png(w, track_h, colors)) if Image is not None else None
+            self._track_key = key
+        top = (h - track_h) // 2
+        if self._track is not None:
+            self.create_image(0, top, image=self._track, anchor="nw")
+        value = max(0, min(self.TOP, int(self.variable.get())))
+        cx = margin + value * (w - 2 * margin) / self.TOP
+        cy = h // 2
+        if self._focus and on:
+            round_rect(self, cx - thumb // 2 - px(8), cy - thumb // 2 - px(8), cx + thumb // 2 + px(8), cy + thumb // 2 + px(8), thumb // 2 + px(8), outline=RING, width=2, fill="")
+        round_rect(self, cx - thumb // 2 - px(4), cy - thumb // 2 - px(4), cx + thumb // 2 + px(4), cy + thumb // 2 + px(4), thumb // 2 + px(4), fill=self._bg, outline=self._bg)
+        round_rect(self, cx - thumb // 2, cy - thumb // 2, cx + thumb // 2, cy + thumb // 2, thumb // 2, fill=RING if on else OFF_KNOB, outline=RING if on else OFF_KNOB)
+
+    def _set(self, value):
+        if self.enabled and int(self.variable.get()) != value:
+            self.variable.set(value)
+            if self.command:
+                self.command()
+
+    def _from_pointer(self, e):
+        w, _, _, margin = self._geometry()
+        self._set(value_from_x(e.x, w, margin, self.TOP))
+
+    def _press(self, e):
+        if self.enabled:
+            self.focus_set()
+            self._start, self._mode = (e.x_root, e.y_root), None
+
+    def _motion(self, e):
+        if not (self.enabled and self._start):
+            return
+        if self._mode is None:
+            self._mode = drag_mode(e.x_root - self._start[0], e.y_root - self._start[1], px(6))
+        if self._mode == "horizontal":
+            self._from_pointer(e)
+
+    def _release(self, e):
+        tap = self.enabled and self._start and self._mode is None
+        self._start, self._mode = None, None
+        if tap:
+            self._from_pointer(e)
+
+    def claims_drag(self):
+        """True while a sideways drag is sliding the thumb: ScrollFrame must not also scroll."""
+        return self.enabled and self._mode == "horizontal"
+
+    def _key(self, e):
+        if self.enabled:
+            self._set(step_value(int(self.variable.get()), e.keysym, self.TOP, self.BIG, self.WRAP))
+        return "break"
+
+
+class HueSlider(_Slider):
+    """A rainbow slider that picks a hue, 0..359 degrees. `color_for(hue)` gives the '#rrggbb' to paint at that hue; the arrows wrap around."""
+
+    TOP, BIG, WRAP = 359, 30, True
+
+
+class ToneSlider(_Slider):
+    """A slider that picks a tone strength, 0..100, with no wrap (colourfulness, brightness). `depends` lists the tk.IntVars the track colours
+    depend on (the hue, say); the track repaints when one of them changes."""
+
+
+class Swatch(_Stateful):
+    """A round colour button. `selected()` says whether to draw it as the chosen one; call draw() again when that changes."""
+
+    def __init__(self, parent, color, selected, command, state="normal", bg=CARD):
+        super().__init__(parent, width=px(52), height=px(52), bg=bg, highlightthickness=0, takefocus=True, cursor="hand2")
+        self._init_state(state)
+        self.color, self.selected, self.command = color, selected, command
+        self._focus = self._armed = False
+        self.bind("<ButtonPress-1>", self._click)
+        self.bind("<ButtonRelease-1>", self._release)
+        self.bind("<space>", self._key)
+        self.bind("<Return>", self._key)
+        self.bind("<FocusIn>", lambda e: self._set_focus(True))
+        self.bind("<FocusOut>", lambda e: self._set_focus(False))
+        self.configure(cursor="hand2" if state == "normal" else "arrow")
+        self.draw()
+
+    def _set_focus(self, v):
+        self._focus = v
+        self.draw()
+
+    def draw(self):
+        self.delete("all")
+        w = int(super().cget("width"))
+        c, d, on = w // 2, px(40), self.enabled
+        if self._focus and on:
+            round_rect(self, c - d // 2 - px(6), c - d // 2 - px(6), c + d // 2 + px(6), c + d // 2 + px(6), d // 2 + px(6), outline=RING, width=2, fill="")
+        if self.selected() and on:
+            round_rect(self, c - d // 2 - px(4), c - d // 2 - px(4), c + d // 2 + px(4), c + d // 2 + px(4), d // 2 + px(4), outline=ACCENT, width=3, fill="")
+        color = self.color if on else _dim(self.color)
+        round_rect(self, c - d // 2, c - d // 2, c + d // 2, c + d // 2, d // 2, fill=color, outline=EDGE if on else OFF_EDGE, width=1)
+
+    def invoke(self):
+        if self.enabled and self.command:
+            self.command()
+
+    def _click(self, _e):
+        self.focus_set()
+        self._armed = True
+
+    def _release(self, e):
+        armed, self._armed = self._armed, False
+        if armed and not _dragging and 0 <= e.x <= self.winfo_width() and 0 <= e.y <= self.winfo_height():
+            self.invoke()
+
+    def _key(self, _e):
+        self.invoke()
         return "break"
 
 
@@ -263,7 +567,7 @@ class Bar(tk.Canvas):
         w, h = self.winfo_width(), int(super().cget("height"))
         if w < 4:
             return
-        round_rect(self, 0, 0, w, h, h // 2, fill="#0c1219", outline="#1f2e3f")
+        round_rect(self, 0, 0, w, h, h // 2, fill=INSET, outline=INSET_EDGE)
         if self._value > 0:
             fw = max(h, int(w * min(self._value / self._max, 1)))
             round_rect(self, 0, 0, fw, h, h // 2, fill=ACCENT, outline=ACCENT)
@@ -282,14 +586,14 @@ class StepBadge(tk.Canvas):
         self.delete("all")
         s = self.s
         if status == "done":
-            self.create_oval(2, 2, s - 2, s - 2, fill=GREEN, outline=GREEN)
-            self.create_line(s * .30, s * .52, s * .45, s * .67, s * .72, s * .36, fill="#ffffff", width=max(2, px(3)),
+            round_rect(self, 2, 2, s - 2, s - 2, s, fill=GREEN, outline=GREEN)
+            self.create_line(s * .30, s * .52, s * .45, s * .67, s * .72, s * .36, fill=RING, width=max(2, px(3)),
                              capstyle="round", joinstyle="round")
         elif status == "active":
-            self.create_oval(2, 2, s - 2, s - 2, fill=ACCENT, outline=ACCENT)
+            round_rect(self, 2, 2, s - 2, s - 2, s, fill=ACCENT, outline=ACCENT)
             self.create_text(s // 2, s // 2, text=self.number, fill=DARK, font=("TkDefaultFont", 13, "bold"))
         else:
-            self.create_oval(2, 2, s - 2, s - 2, fill=CARD, outline=LINE, width=2)
+            round_rect(self, 2, 2, s - 2, s - 2, s, fill=CARD, outline=LINE, width=2)
             self.create_text(s // 2, s // 2, text=self.number, fill=FAINT, font=("TkDefaultFont", 13, "bold"))
 
 
@@ -317,6 +621,199 @@ class Card(tk.Canvas):
         self.tag_lower("bg")
 
 
+class Flow(tk.Frame):
+    """Left-to-right row of widgets that wraps onto the next line when the window gets narrow.
+    Children are created with this frame as parent and registered with add(widget, gap)."""
+
+    def __init__(self, parent, bg=CARD):
+        super().__init__(parent, bg=bg)
+        self._items, self._placed = [], None
+        self.bind("<Configure>", self._layout)
+
+    def add(self, widget, gap=0):
+        if all(w is not widget for w, _ in self._items):
+            self._items.append((widget, gap))
+        self._layout()
+
+    def remove(self, widget):
+        self._items = [(w, g) for w, g in self._items if w is not widget]
+        widget.grid_forget()
+        self._placed = None
+        self._layout()
+
+    def clear(self):
+        for w, _ in self._items:
+            w.grid_forget()
+        self._items, self._placed = [], None
+
+    def _layout(self, _e=None):
+        width = self.winfo_width()
+        if width < 2:
+            width = 10 ** 6                      # not on screen yet: ask for a single line
+        x = row = col = 0
+        plan = []
+        for w, gap in self._items:
+            need = w.winfo_reqwidth() + (gap if col else 0)
+            if col and x + need > width:
+                row, col, x, need = row + 1, 0, 0, w.winfo_reqwidth()
+            plan.append((w, row, col, gap if col else 0))
+            x += need
+            col += 1
+        if plan == self._placed:
+            return
+        self._placed = plan
+        for w, r, c, g in plan:
+            w.grid(row=r, column=c, padx=(g, 0), pady=(0 if r == 0 else px(4), 0), sticky="w")
+
+
+class _Pill(_Stateful):
+    """One option of a Choice: a touch-sized pill, filled with the accent while it is the chosen one."""
+
+    def __init__(self, parent, text, selected, select, move, bg=CARD):
+        self._font = tkfont.Font(font="TkDefaultFont")
+        self._font.configure(weight="bold")
+        super().__init__(parent, width=self._font.measure(text) + px(40), height=max(px(46), self._font.metrics("linespace") + px(18)), bg=bg,
+                         highlightthickness=0, takefocus=False, cursor="hand2")
+        self._init_state("normal")
+        self.text, self.selected, self.select, self.move = text, selected, select, move
+        self._focus = self._armed = False
+        self.bind("<ButtonPress-1>", self._click)
+        self.bind("<ButtonRelease-1>", self._release)
+        self.bind("<space>", self._key)
+        self.bind("<Return>", self._key)
+        for key in ("Left", "Right", "Up", "Down", "Home", "End"):
+            self.bind("<%s>" % key, lambda e: self._move(e.keysym))
+        self.bind("<FocusIn>", lambda e: self._set_focus(True))
+        self.bind("<FocusOut>", lambda e: self._set_focus(False))
+
+    def _set_focus(self, v):
+        self._focus = v
+        self.draw()
+
+    def draw(self):
+        self.delete("all")
+        w, h = int(super().cget("width")), int(super().cget("height"))
+        on, chosen = self.enabled, self.selected()
+        if on:
+            fill, outline, fg = (ACCENT, ACCENT, DARK) if chosen else (CARD2, EDGE, FG)
+        else:
+            fill, outline, fg = (OFF_TRACK_ON, OFF_TRACK_ON, MUTED) if chosen else (CARD, OFF_EDGE, FAINT)
+        if self._focus and on:
+            round_rect(self, 1, 1, w - 1, h - 1, h // 2, outline=RING, width=2, fill="")
+        round_rect(self, 4, 4, w - 4, h - 4, h // 2, fill=fill, outline=outline, width=1)
+        self.create_text(w // 2, h // 2, text=self.text, font=self._font, fill=fg)
+
+    def _click(self, _e):
+        if self.enabled:
+            self.focus_set()
+            self._armed = True
+
+    def _release(self, e):
+        armed, self._armed = self._armed, False
+        if armed and not _dragging and 0 <= e.x <= self.winfo_width() and 0 <= e.y <= self.winfo_height():
+            self.select()
+
+    def _key(self, _e):
+        if self.enabled:
+            self.select()
+        return "break"
+
+    def _move(self, key):
+        if self.enabled:
+            self.move(key)
+        return "break"
+
+
+class Choice(tk.Frame):
+    """A group of 2 to 4 pill options of which exactly one is chosen, kept in a tk.StringVar.
+    `options` is a list of (value, label). The group is one Tab stop: Tab lands on the chosen pill, and the arrows, Home and End move AND choose
+    (Space / Enter choose the focused pill). The pills wrap onto more rows when the window is narrow, but only if it is packed with fill="x"
+    or gridded with sticky="ew" (it follows the width it is given). command() runs once per change by the user."""
+
+    def __init__(self, parent, variable, options, command=None, state="normal", bg=CARD):
+        self._rows_h = None
+        super().__init__(parent, bg=bg)
+        self.bind("<Configure>", self._layout)
+        self.variable, self.command, self._state = variable, command, state
+        self._values = [value for value, _ in options]
+        self._pills = []
+        for i, (value, label) in enumerate(options):
+            pill = _Pill(self, label, lambda v=value: self.variable.get() == v, lambda v=value: self._choose(v), self._move_from(i), bg=bg)
+            self._pills.append(pill)
+        self._layout()
+        self._trace = variable.trace_add("write", lambda *a: self._sync())
+        self.bind("<Destroy>", self._forget, add="+")
+        self.configure(state=state)
+
+    def _forget(self, e):
+        """Stop listening to the variable once this group is gone (the variable outlives it)."""
+        if e.widget is self:
+            try:
+                self.variable.trace_remove("write", self._trace)
+            except tk.TclError:
+                pass
+
+    def _layout(self, _e=None):
+        """Place the pills row by row with place(): a grid (as Flow uses) would give the pills of one column the width of the widest, which pushes them off a narrow window."""
+        width = self.winfo_width()
+        if width < 2:
+            width = 10 ** 6                      # not on screen yet: ask for a single line
+        gap, x, y, row_h = px(8), 0, 0, 0
+        for pill in self._pills:
+            pw, ph = pill.winfo_reqwidth(), pill.winfo_reqheight()
+            if x and x + gap + pw > width:
+                x, y, row_h = 0, y + row_h + px(4), 0
+            x += gap if x else 0
+            pill.place(x=x, y=y)
+            x, row_h = x + pw, max(row_h, ph)
+        if (y + row_h) != self._rows_h:
+            self._rows_h = y + row_h
+            tk.Frame.configure(self, height=self._rows_h, width=max([p.winfo_reqwidth() for p in self._pills] + [1]))
+
+    def _move_from(self, i):
+        return lambda key: self._choose_at(step_choice(i, key, len(self._pills)), focus=True)
+
+    def _choose_at(self, index, focus=False):
+        self._choose(self._values[index])
+        if focus:
+            self._pills[index].focus_set()
+
+    def _choose(self, value):
+        if self.enabled and self.variable.get() != value:
+            self.variable.set(value)
+            if self.command:
+                self.command()
+
+    def _sync(self):
+        """Repaint the pills, and make the chosen one the group's only Tab stop (the first one while nothing is chosen)."""
+        try:
+            current = self.variable.get()
+            stop = self._values.index(current) if current in self._values else 0
+            for i, pill in enumerate(self._pills):
+                pill.configure(takefocus=self.enabled and i == stop)
+                pill.draw()
+        except tk.TclError:                                  # the window closed in between
+            pass
+
+    def configure(self, cnf=None, **kw):
+        if "state" in kw:
+            self._state = kw.pop("state")
+            for pill in self._pills:
+                pill.configure(state=self._state)            # also redraws and sets the cursor
+            self._sync()
+        if cnf or kw:
+            return super().configure(cnf, **kw)
+
+    config = configure
+
+    def cget(self, key):
+        return self._state if key == "state" else super().cget(key)
+
+    @property
+    def enabled(self):
+        return self._state == "normal"
+
+
 class ScrollFrame(tk.Frame):
     """Vertical scroller for small screens (Steam Deck: 800 px high). Put content in .inner.
     The scrollbar only appears when the content does not fit. Mouse wheel and Tab both scroll."""
@@ -337,6 +834,10 @@ class ScrollFrame(tk.Frame):
         top.bind_all("<Button-4>", lambda e: self._scroll(-1), add="+")          # Linux
         top.bind_all("<Button-5>", lambda e: self._scroll(1), add="+")
         top.bind_all("<FocusIn>", self._focus, add="+")                          # Tab into something off-screen: scroll to it
+        self._drag, self._drag_widget = None, None                               # touch: a finger drag arrives as mouse press, motion, release
+        top.bind_all("<ButtonPress-1>", self._drag_start, add="+")
+        top.bind_all("<B1-Motion>", self._drag_move, add="+")
+        top.bind_all("<ButtonRelease-1>", self._drag_end, add="+")
 
     def _on_canvas(self, e):
         self.canvas.itemconfigure(self._win, width=e.width)
@@ -368,6 +869,33 @@ class ScrollFrame(tk.Frame):
             widget = widget.master
         self._scroll(-1 if e.delta > 0 else 1)
 
+    def _drag_start(self, e):
+        self._drag = None
+        if self.scrollable() and isinstance(e.widget, tk.Widget) and str(e.widget).startswith(str(self.inner)):
+            self._drag = (e.y_root, self.canvas.canvasy(0), False)
+            self._drag_widget = e.widget
+
+    def _drag_move(self, e):
+        global _dragging
+        if not self._drag:
+            return
+        claim = getattr(self._drag_widget, "claims_drag", None)
+        if claim and claim():                       # the widget is using this drag itself (the colour slider being slid sideways)
+            self._drag = None
+            return
+        y0, view0, moving = self._drag
+        if not moving and abs(e.y_root - y0) < px(10):
+            return                                  # still a tap: leave the control under the finger alone
+        _dragging = True
+        self._drag = (y0, view0, True)
+        total = self.inner.winfo_reqheight()
+        self.canvas.yview_moveto(max(0, min(1, (view0 + y0 - e.y_root) / total)))
+
+    def _drag_end(self, _e):
+        global _dragging
+        self._drag = None
+        _dragging = False
+
     def _focus(self, e):
         w = e.widget
         if not self.scrollable() or not isinstance(w, tk.Widget):
@@ -389,8 +917,6 @@ class ScrollFrame(tk.Frame):
 
 # ----- dialogs ---------------------------------------------------------------------------------------------
 
-AMBER = "#f0b429"
-
 
 class _Glyph(tk.Canvas):
     """Round icon for dialogs: warning (!), question (?), info (i) or error (x)."""
@@ -401,7 +927,7 @@ class _Glyph(tk.Canvas):
         s = px(48)
         super().__init__(parent, width=s, height=s, bg=CARD, highlightthickness=0)
         color = self.COLORS.get(kind, ACCENT)
-        self.create_oval(2, 2, s - 2, s - 2, fill=color, outline=color)
+        round_rect(self, 2, 2, s - 2, s - 2, s, fill=color, outline=color)
         if kind == "error":
             a, b = s * .34, s * .66
             self.create_line(a, a, b, b, fill=DARK, width=max(3, px(4)), capstyle="round")
@@ -413,7 +939,7 @@ class _Glyph(tk.Canvas):
 class Dialog(tk.Toplevel):
     """A modal message window in the app's own style (replaces the plain system message boxes).
 
-    paragraphs: list of (text, style), style in "main", "muted", "warn".
+    paragraphs: list of (text, style), style in "main", "muted", "note", "warn".
     buttons:    list of (label, value, primary); the primary one has the focus, so Enter confirms.
     Escape or closing the window returns `cancel_value`."""
 
@@ -441,8 +967,8 @@ class Dialog(tk.Toplevel):
         body = tk.Frame(frame, bg=CARD)
         body.pack(fill="x", pady=(px(16), px(6)))
         for text, style in paragraphs:
-            fg, font = {"main": (FG, "TkDefaultFont"), "muted": (MUTED, "TkDefaultFont")}.get(style, (AMBER, "TkDefaultFont"))
-            tk.Label(body, text=text, bg=CARD, fg=fg, font=(font, 11, "bold") if style == "warn" else (font, 11),
+            fg = {"main": FG, "muted": MUTED, "note": ACCENT}.get(style, AMBER)       # note: good news, in the accent color; anything else is a warning
+            tk.Label(body, text=text, bg=CARD, fg=fg, font=("TkDefaultFont", 11, "bold") if style in ("warn", "note") else ("TkDefaultFont", 11),
                      justify="left", wraplength=px(470), anchor="w").pack(fill="x", pady=(0, px(10)))
         row = tk.Frame(frame, bg=CARD)
         row.pack(fill="x", pady=(px(8), 0))

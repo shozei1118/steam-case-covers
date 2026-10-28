@@ -17,4 +17,5 @@ dist/
 build-qt-*/
 dist-qt-*/
 visual-check/
+docs/gui-check/
 assets/version.txt

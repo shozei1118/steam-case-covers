@@ -74,6 +74,32 @@ class QtWorkflowTests(unittest.TestCase):
         self.assertGreater(self.window.splitter.sizes()[1], 600)
         self.assertIs(self.window.editor, editor)
 
+    def test_platinum_toggle_persists_and_batch_edit_restores_it(self):
+        with mock.patch.object(self.service, "current_cover", return_value=None), \
+             mock.patch.object(self.service, "artwork", return_value=[]):
+            self.window.select_game(self.game)
+        self.assertFalse(self.window.editor.platinum.isChecked())
+        self.window.image_path = str(self.art)
+        self.window.render_preview()
+        self.wait(lambda: self.window.preview_path is not None)
+        standard = self.window.preview_path
+        self.window.editor.platinum.setChecked(True)
+        self.wait(lambda: self.window.preview_path is not None and self.window.preview_path != standard)
+        self.assertTrue(self.service.platinum_for(self.game))
+        self.window.add_to_batch()
+        self.assertTrue(self.service.queue["steam:220"].platinum)
+        self.window.navigate("Batch")
+        self.assertIn("Platinum", self.window.batch_table.item(0, 0).text())
+        self.window.batch_table.selectRow(0)
+        with mock.patch.object(self.service, "current_cover", return_value=None), \
+             mock.patch.object(self.service, "artwork", return_value=[]):
+            self.window.edit_batch()
+        self.assertTrue(self.window.editor.platinum.isChecked())
+        self.assertTrue(AppSettings(self.service.settings.path).platinum_choices["steam:220"])
+        self.window.editor.platinum.setChecked(False)
+        self.wait(lambda: self.window.preview_path is not None)
+        self.assertFalse(self.service.platinum_for(self.game))
+
     def test_library_download_button_opens_steam_and_manual_file_still_loads(self):
         import json
         import qt_gui
