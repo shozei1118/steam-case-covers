@@ -210,6 +210,7 @@ def _read_version():
 
 
 APP_VERSION = _read_version()
+REPO = "shozei1118/steam-case-covers"
 
 
 def version_tuple(tag):

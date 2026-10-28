@@ -3,6 +3,7 @@
 All notable changes. Versions follow [Semantic Versioning](https://semver.org); `0.x` versions are pre-releases.
 
 ## [Unreleased]
+- Set the official repository, security links and future update checks to `shozei1118/steam-case-covers`; preserve original licensing and author attribution.
 
 ## [1.5.2] - 2026-10-28
 - Platinum V2 adds layered steel-blue metal shading and an original upright SVG trophy, seated in a rounded extension of the lower lip. Platform headers and normal covers remain unchanged.

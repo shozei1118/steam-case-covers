@@ -14,7 +14,7 @@
 ![PySide6](https://img.shields.io/badge/PySide6-Qt%206-577bce?style=flat-square&logo=qt&logoColor=e8eaf0)
 ![Version](https://img.shields.io/badge/version-1.5.2-83c7ee?style=flat-square)
 
-[**⬇ Download**](../../releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
+[**⬇ Download**](https://github.com/shozei1118/steam-case-covers/releases/latest) · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Development](#development) · [Detailed notes](docs/DETAILS.md)
 
 <img src="assets/steam-library.png" width="460" alt="A Steam library with case covers installed">
 
@@ -46,7 +46,7 @@ The Tkinter fallback also keeps its saved-games-page achievement highlighting, c
 
 ### Ready-made build (recommended)
 
-Download the file for your system from the [latest release](../../releases/latest):
+Download the file for your system from the [latest release](https://github.com/shozei1118/steam-case-covers/releases/latest):
 
 | System | File | Notes |
 |---|---|---|
@@ -117,6 +117,8 @@ Steam's copies live in `userdata/<id>/config/grid`, next to the backups the app 
 - Screen readers are not supported; the window works fully with the keyboard, and the [command line](docs/DETAILS.md#command-line) is the accessible alternative.
 
 More answers are in the [FAQ](docs/DETAILS.md#faq).
+
+Official repository: [shozei1118/steam-case-covers](https://github.com/shozei1118/steam-case-covers).
 
 ## Development
 

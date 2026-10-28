@@ -18,7 +18,7 @@ pyz = PYZ(a.pure)
 if sys.platform == "darwin":                       # macOS: folder-based .app (single-file .app is discouraged)
     exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="CaseCovers", console=False)
     coll = COLLECT(exe, a.binaries, a.datas, name="CaseCovers")
-    app = BUNDLE(coll, name="CaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.diegobergonsi.casecovers")
+    app = BUNDLE(coll, name="CaseCovers.app", icon="assets/icon.icns", bundle_identifier="com.github.shozei1118.casecovers")
 else:                                              # Windows and Linux: one file
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name="CaseCovers", console=False,
               icon="assets/icon.ico" if sys.platform.startswith("win") else None)
