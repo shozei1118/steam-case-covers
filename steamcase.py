@@ -565,7 +565,7 @@ def grid_dir(steam, user=None):
 # ---------- Steam process ----------
 def _background_creationflags():
     """Keep Windows console tools from opening a window when called by the GUI."""
-    return subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+    return getattr(subprocess, "CREATE_NO_WINDOW", _NO_WINDOW) if sys.platform.startswith("win") else 0
 # On Windows a windowed app has no console, so every console program it starts (tasklist) would flash a black window and take the focus.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)         # 0 on Linux and macOS, where the attribute does not exist
 
