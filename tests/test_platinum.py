@@ -35,14 +35,16 @@ class PlatinumWorkflow(unittest.TestCase):
                     self.assertEqual(b.size, (600, 900))
                     self.assertEqual(a.getchannel("A").tobytes(), b.getchannel("A").tobytes())
                     self.assertEqual(a.crop((14, 14, 586, 96)).tobytes(), b.crop((14, 14, 586, 96)).tobytes())
-                    self.assertIsNone(ImageChops.difference(a.crop((14, 96, 586, 872)),
-                                                             b.crop((14, 96, 586, 872))).getbbox())
+                    self.assertIsNone(ImageChops.difference(a.crop((14, 96, 586, 836)),
+                                                             b.crop((14, 96, 586, 836))).getbbox())
                     self.assertIsNone(ImageChops.difference(a.crop((38, 20, 562, 84)),
                                                              b.crop((38, 20, 562, 84))).getbbox())
                     for point in ((0, 450), (599, 450), (300, 0), (300, 899)):
                         self.assertNotEqual(a.getpixel(point), b.getpixel(point))
                     self.assertNotEqual(a.getpixel((300, 884)), b.getpixel((300, 884)))
                     self.assertEqual(b.getpixel((300, 500)), a.getpixel((300, 500)))
+                    for region in ((14, 836, 238, 872), (363, 836, 586, 872)):
+                        self.assertEqual(a.crop(region).tobytes(), b.crop(region).tobytes())
                     self.assertTrue(sc.is_steamcase_cover(platinum))
 
     def test_settings_preview_batch_export_and_prepared_cover(self):

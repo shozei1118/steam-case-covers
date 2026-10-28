@@ -56,6 +56,19 @@ def main():
                     cover = cover.convert("RGB").resize(CELL, Image.Resampling.LANCZOS)
                     canvas.paste(cover, (20 + col * 170, y + 16))
     canvas.save(target, optimize=True)
+    import platinum_frame
+    details = Image.new("RGB", (840, 660), "#172536")
+    pen = ImageDraw.Draw(details)
+    with Image.open(root / "assets" / "frames" / "steam.png") as source:
+        normal = source.convert("RGBA")
+    for col, frame in enumerate((normal, platinum_frame.apply(normal))):
+        pen.text((20 + col * 420, 12), "Normal" if col == 0 else "Platinum V2", fill="white")
+        for row, region in enumerate(((0, 0, 100, 100), (0, 350, 35, 450), (230, 830, 370, 900))):
+            crop = frame.crop(region)
+            factor = min(3, 380 // crop.width, 200 // crop.height)
+            crop = crop.resize((crop.width * factor, crop.height * factor), Image.Resampling.LANCZOS)
+            details.paste(crop, (20 + col * 420, 40 + row * 200), crop)
+    details.save(root / "docs" / "platinum-details.png")
     print(target)
 
 

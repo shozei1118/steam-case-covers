@@ -4,6 +4,9 @@ All notable changes. Versions follow [Semantic Versioning](https://semver.org); 
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-28
+- Platinum V2 adds layered steel-blue metal shading and an original upright SVG trophy, seated in a rounded extension of the lower lip. Platform headers and normal covers remain unchanged.
+
 ## [1.5.1] - 2026-10-28
 - Corrected Platinum Edition to reuse the original SVG case geometry, rounded corners, shading and lip layers instead of drawing an extra rectangular outline. Platform headers and artwork remain pixel-identical.
 
